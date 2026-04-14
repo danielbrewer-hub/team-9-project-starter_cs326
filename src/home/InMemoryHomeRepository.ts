@@ -1,43 +1,192 @@
 import { Ok, type Result } from "../lib/result";
 import type {
-  IAlpineDemoContent,
+  ICreateEventInput,
+  ICreateRsvpInput,
+  IEventRecord,
   IHomeContentRepository,
-  IHomeTip,
+  IRsvpRecord,
+  IUpdateEventInput,
 } from "./HomeRepository";
 
-class InMemoryHomeContentRepository implements IHomeContentRepository {
-  async listGettingStartedTips(): Promise<Result<IHomeTip[], Error>> {
-    return Ok([
-      {
-        title: "Replace this dashboard",
-        description: "Turn `/home` into your project's real landing page or workspace.",
-      },
-      {
-        title: "Add feature routes",
-        description: "Register URLs in `src/app.ts` and point them at controller methods.",
-      },
-      {
-        title: "Build views and services together",
-        description: "Let controllers render EJS while services return `Result<T, E>` values.",
-      },
-      {
-        title: "Prepare your data model",
-        description: "Add tables to `prisma/schema.prisma` now so the repository swap is easy later.",
-      },
-    ]);
+const events = new Map<string, IEventRecord>();
+const rsvps = new Map<string, IRsvpRecord>();
+
+function cloneEvent(event: IEventRecord): IEventRecord {
+  return { ...event };
+}
+
+function cloneRsvp(rsvp: IRsvpRecord): IRsvpRecord {
+  return { ...rsvp };
+}
+
+function listStoredEvents(): IEventRecord[] {
+  return Array.from(events.values()).map(cloneEvent);
+}
+
+function findStoredEventById(eventId: string): IEventRecord | null {
+  const event = events.get(eventId);
+  return event ? cloneEvent(event) : null;
+}
+
+function createStoredEvent(input: ICreateEventInput, now: Date = new Date()): IEventRecord {
+  const timestamp = now.toISOString();
+  const event: IEventRecord = {
+    ...input,
+    capacity: input.capacity,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  events.set(event.id, event);
+  return cloneEvent(event);
+}
+
+function updateStoredEvent(
+  eventId: string,
+  input: IUpdateEventInput,
+  now: Date = new Date(),
+): IEventRecord | null {
+  const existing = events.get(eventId);
+  if (!existing) {
+    return null;
   }
 
-  async getAlpineDemoContent(): Promise<Result<IAlpineDemoContent, Error>> {
-    return Ok({
-      title: "Alpine.js Demo",
-      description:
-        "Alpine.js is included via CDN and ready to use. This collapsible section demonstrates a tiny interactive island inside an EJS page.",
-      helperText: "A simple Alpine.js counter",
-      buttonLabel: "Clicked:",
-    });
+  const next: IEventRecord = {
+    ...existing,
+    ...input,
+    updatedAt: now.toISOString(),
+  };
+  events.set(eventId, next);
+  return cloneEvent(next);
+}
+
+function listStoredRsvpsForEvent(eventId: string): IRsvpRecord[] {
+  return Array.from(rsvps.values())
+    .filter((rsvp) => rsvp.eventId === eventId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .map(cloneRsvp);
+}
+
+function listStoredRsvpsForUser(userId: string): IRsvpRecord[] {
+  return Array.from(rsvps.values())
+    .filter((rsvp) => rsvp.userId === userId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .map(cloneRsvp);
+}
+
+function upsertStoredRsvp(input: ICreateRsvpInput, now: Date = new Date()): IRsvpRecord {
+  const existing = Array.from(rsvps.values()).find(
+    (rsvp) => rsvp.eventId === input.eventId && rsvp.userId === input.userId,
+  );
+
+  if (existing) {
+    const updated: IRsvpRecord = {
+      ...existing,
+      status: input.status,
+    };
+    rsvps.set(updated.id, updated);
+    return cloneRsvp(updated);
+  }
+
+  const created: IRsvpRecord = {
+    ...input,
+    createdAt: now.toISOString(),
+  };
+  rsvps.set(created.id, created);
+  return cloneRsvp(created);
+}
+
+function seedRepository(): void {
+  if (events.size > 0) {
+    return;
+  }
+
+  createStoredEvent({
+    id: "event-1",
+    title: "Sprint Planning Workshop",
+    description: "Plan work for the next sprint and confirm ownership across the team.",
+    location: "CS Building Room 204",
+    category: "planning",
+    status: "published",
+    capacity: 12,
+    startDatetime: "2026-04-18T14:00:00.000Z",
+    endDatetime: "2026-04-18T15:30:00.000Z",
+    organizerId: "user-admin",
+  });
+
+  createStoredEvent({
+    id: "event-2",
+    title: "Project Demo Dry Run",
+    description: "Run through the demo script and capture issues before presentation day.",
+    location: "Online",
+    category: "demo",
+    status: "draft",
+    startDatetime: "2026-04-20T18:00:00.000Z",
+    endDatetime: "2026-04-20T19:00:00.000Z",
+    organizerId: "user-staff",
+  });
+
+  upsertStoredRsvp({
+    id: "rsvp-1",
+    eventId: "event-1",
+    userId: "user-admin",
+    status: "going",
+  });
+
+  upsertStoredRsvp({
+    id: "rsvp-2",
+    eventId: "event-1",
+    userId: "user-staff",
+    status: "waitlisted",
+  });
+}
+
+class InMemoryHomeContentRepository implements IHomeContentRepository {
+  constructor() {
+    seedRepository();
+  }
+
+  async listEvents(): Promise<Result<IEventRecord[], Error>> {
+    return Ok(listStoredEvents());
+  }
+
+  async findEventById(eventId: string): Promise<Result<IEventRecord | null, Error>> {
+    return Ok(findStoredEventById(eventId));
+  }
+
+  async createEvent(input: ICreateEventInput): Promise<Result<IEventRecord, Error>> {
+    return Ok(createStoredEvent(input));
+  }
+
+  async updateEvent(
+    eventId: string,
+    input: IUpdateEventInput,
+  ): Promise<Result<IEventRecord | null, Error>> {
+    return Ok(updateStoredEvent(eventId, input));
+  }
+
+  async listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>> {
+    return Ok(listStoredRsvpsForEvent(eventId));
+  }
+
+  async listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>> {
+    return Ok(listStoredRsvpsForUser(userId));
+  }
+
+  async upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>> {
+    return Ok(upsertStoredRsvp(input));
   }
 }
 
 export function CreateInMemoryHomeContentRepository(): IHomeContentRepository {
   return new InMemoryHomeContentRepository();
 }
+
+export {
+  createStoredEvent,
+  findStoredEventById,
+  listStoredEvents,
+  listStoredRsvpsForEvent,
+  listStoredRsvpsForUser,
+  upsertStoredRsvp,
+  updateStoredEvent,
+};
