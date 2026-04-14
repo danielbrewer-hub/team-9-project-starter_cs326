@@ -1,0 +1,22 @@
+
+<form
+class = "edit-form"
+hx-post="/">
+    <label for="title">Title</label>
+    <input id="title" name="title"  required/>
+
+    <label for="body">Description</label>
+    <textarea id="body" name="body" rows="3" required></textarea>
+    <label for="location">Location</label>
+    <input id="location" name="location" required/>
+    <label for="category">Category</label>
+    <input id="category" name="category" placeholder="" required/>
+    <label for="capacity">Capacity</label>
+    <input id="capacity" name="capacity"/>
+    <button type="submit">Submit Changes</button>
+    <div x-data="{
+                    current:'',
+                    get 
+                }""></div>
+
+</form>
