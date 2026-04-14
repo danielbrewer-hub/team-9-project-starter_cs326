@@ -3,6 +3,7 @@ import express, { Request, RequestHandler, Response } from "express";
 import session from "express-session";
 import Layouts from "express-ejs-layouts";
 import { IAuthController } from "./auth/AuthController";
+import type { IHomeController } from "./home/HomeController";
 import {
   AuthenticationRequired,
   AuthorizationRequired,
@@ -13,7 +14,6 @@ import {
   getAuthenticatedUser,
   isAuthenticatedSession,
   AppSessionStore,
-  recordPageView,
   touchAppSession,
 } from "./session/AppSession";
 import { ILoggingService } from "./service/LoggingService";
@@ -36,6 +36,7 @@ class ExpressApp implements IApp {
 
   constructor(
     private readonly authController: IAuthController,
+    private readonly homeController: IHomeController,
     private readonly logger: ILoggingService,
     private readonly eventController: EventController,
   ) {
@@ -135,30 +136,27 @@ class ExpressApp implements IApp {
       "/login",
       asyncHandler(async (req, res) => {
         const store = sessionStore(req);
-        const browserSession = recordPageView(store);
 
         if (getAuthenticatedUser(store)) {
           res.redirect("/home");
           return;
         }
 
-        await this.authController.showLogin(res, browserSession);
+        await this.authController.showLogin(req, res);
       }),
     );
 
     this.app.post(
       "/login",
       asyncHandler(async (req, res) => {
-        const email = typeof req.body.email === "string" ? req.body.email : "";
-        const password = typeof req.body.password === "string" ? req.body.password : "";
-        await this.authController.loginFromForm(res, email, password, sessionStore(req));
+        await this.authController.loginFromForm(req, res);
       }),
     );
 
     this.app.post(
       "/logout",
       asyncHandler(async (req, res) => {
-        await this.authController.logoutFromForm(res, sessionStore(req));
+        await this.authController.logoutFromForm(req, res);
       }),
     );
 
@@ -171,8 +169,7 @@ class ExpressApp implements IApp {
           return;
         }
 
-        const browserSession = recordPageView(sessionStore(req));
-        await this.authController.showAdminUsers(res, browserSession);
+        await this.authController.showAdminUsers(req, res);
       }),
     );
 
@@ -183,23 +180,7 @@ class ExpressApp implements IApp {
           return;
         }
 
-        const roleValue = typeof req.body.role === "string" ? req.body.role : "user";
-        const role: UserRole =
-          roleValue === "admin" || roleValue === "staff" || roleValue === "user"
-            ? roleValue
-            : "user";
-
-        await this.authController.createUserFromForm(
-          res,
-          {
-            email: typeof req.body.email === "string" ? req.body.email : "",
-            displayName:
-              typeof req.body.displayName === "string" ? req.body.displayName : "",
-            password: typeof req.body.password === "string" ? req.body.password : "",
-            role,
-          },
-          touchAppSession(sessionStore(req)),
-        );
+        await this.authController.createUserFromForm(req, res);
       }),
     );
 
@@ -210,22 +191,7 @@ class ExpressApp implements IApp {
           return;
         }
 
-        const session = touchAppSession(sessionStore(req));
-        const currentUser = getAuthenticatedUser(sessionStore(req));
-        if (!currentUser) {
-          res.status(401).render("partials/error", {
-            message: AuthenticationRequired("Please log in to continue.").message,
-            layout: false,
-          });
-          return;
-        }
-
-        await this.authController.deleteUserFromForm(
-          res,
-          typeof req.params.id === "string" ? req.params.id : "",
-          currentUser.userId,
-          session,
-        );
+        await this.authController.deleteUserFromForm(req, res);
       }),
     );
 
@@ -238,9 +204,7 @@ class ExpressApp implements IApp {
           return;
         }
 
-        const browserSession = recordPageView(sessionStore(req));
-        this.logger.info(`GET /home for ${browserSession.browserLabel}`);
-        res.render("home", { session: browserSession, pageError: null });
+        await this.homeController.showHome(req, res);
       }),
     );
 
@@ -281,8 +245,9 @@ class ExpressApp implements IApp {
 
 export function CreateApp(
   authController: IAuthController,
+  homeController: IHomeController,
   logger: ILoggingService,
   eventController: EventController,
 ): IApp {
-  return new ExpressApp(authController, logger, eventController);
+  return new ExpressApp(authController, homeController, logger, eventController);
 }
