@@ -7,11 +7,12 @@ import { CreateApp } from "./app";
 import { CreateHomeController } from "./home/HomeController";
 import { CreateInMemoryHomeContentRepository } from "./home/InMemoryHomeRepository";
 import { CreateHomeService } from "./home/HomeService";
-import { CreateRsvpDashboardController } from "./home/RsvpDashboardController";
-import { CreateRsvpDashboardService } from "./home/RsvpDashboardService";
 import type { IApp } from "./contracts";
 import { CreateLoggingService } from "./service/LoggingService";
 import type { ILoggingService } from "./service/LoggingService";
+import { InMemoryEventRepository } from "./events/InMemoryEventRepository";
+import { EventService } from "./events/EventService";
+import { EventController } from "./events/EventController";
 
 export function createComposedApp(logger?: ILoggingService): IApp {
   const resolvedLogger = logger ?? CreateLoggingService();
@@ -22,11 +23,16 @@ export function createComposedApp(logger?: ILoggingService): IApp {
   const authService = CreateAuthService(authUsers, passwordHasher);
   const adminUserService = CreateAdminUserService(authUsers, passwordHasher);
   const authController = CreateAuthController(authService, adminUserService, resolvedLogger);
+
+  // Home wiring
   const homeContentRepository = CreateInMemoryHomeContentRepository();
   const homeService = CreateHomeService(homeContentRepository);
   const homeController = CreateHomeController(homeService, resolvedLogger);
-  const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
-  const rsvpDashboardController = CreateRsvpDashboardController(rsvpDashboardService, resolvedLogger);
 
-  return CreateApp(authController, homeController, rsvpDashboardController, resolvedLogger);
+  // Event wiring
+  const eventRepo = new InMemoryEventRepository();
+  const eventService = new EventService(eventRepo);
+  const eventController = new EventController(eventService);
+
+  return CreateApp(authController, homeController, resolvedLogger, eventController);
 }
