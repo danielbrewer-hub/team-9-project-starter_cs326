@@ -18,19 +18,15 @@
 
 <section class="max-w-3xl p-6 border border-slate-200 rounded-2xl bg-white shadow-lg">
   <div class="mb-4">
-    <h2 class="text-xl font-semibold mb-2">Getting Started</h2>
+    <h2 class="text-xl font-semibold mb-2">Event Summary</h2>
     <p class="text-slate-500">
-      This starter application now shows a full route/controller/service/repository path.
-      Here are some next steps:
+      This home page is now backed by event and RSVP records stored in the repository layer.
     </p>
   </div>
 
   <ul class="list-disc pl-5 space-y-2 text-slate-700">
-    <% for (const tip of home?.gettingStartedTips ?? []) { %>
-      <li>
-        <strong><%= tip.title %>:</strong>
-        <%= tip.description %>
-      </li>
+    <% for (const item of home?.eventSummary ?? []) { %>
+      <li><%= item %></li>
     <% } %>
   </ul>
 </section>
@@ -40,24 +36,32 @@
     @click="open = !open"
     class="w-full flex items-center justify-between text-left bg-transparent border-0 p-0 cursor-pointer"
   >
-    <h2 class="text-xl font-semibold"><%= home?.alpineDemo.title ?? "Alpine.js Demo" %></h2>
+    <h2 class="text-xl font-semibold">Recent Events</h2>
     <span class="text-slate-400 text-sm" x-text="open ? 'Hide' : 'Show'">Show</span>
   </button>
 
   <div x-show="open" x-transition class="mt-4">
-    <p class="text-slate-500 mb-3">
-      <%= home?.alpineDemo.description ?? "Alpine.js is included via CDN and ready to use." %>
-    </p>
-    <div x-data="{ count: 0 }" class="flex items-center gap-3">
-      <button
-        @click="count++"
-        class="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium cursor-pointer hover:bg-blue-700 text-sm"
-      >
-        <%= home?.alpineDemo.buttonLabel ?? "Clicked:" %> <span x-text="count">0</span>
-      </button>
-      <span class="text-sm text-slate-500">
-        <%= home?.alpineDemo.helperText ?? "A simple Alpine.js counter" %>
-      </span>
+    <% if ((home?.recentEvents?.length ?? 0) === 0) { %>
+      <p class="text-slate-500 mb-0">No events are stored yet.</p>
+    <% } %>
+
+    <div class="space-y-3">
+      <% for (const event of home?.recentEvents ?? []) { %>
+        <article class="rounded-xl border border-slate-200 p-4 bg-slate-50">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h3 class="font-semibold text-slate-900"><%= event.title %></h3>
+              <p class="text-sm text-slate-500 mt-1">
+                <%= event.category %> · <%= event.location %>
+              </p>
+            </div>
+            <span class="text-xs uppercase tracking-wide text-slate-500"><%= event.status %></span>
+          </div>
+          <p class="text-sm text-slate-600 mt-3">
+            <%= event.attendeeCount %> confirmed attendee<%= event.attendeeCount === 1 ? "" : "s" %>
+          </p>
+        </article>
+      <% } %>
     </div>
   </div>
 </section>
