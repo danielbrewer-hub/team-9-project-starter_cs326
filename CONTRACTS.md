@@ -11,6 +11,8 @@
 # Feature 6 (Aditya)
 
 # Feature 7 (Isik)
+RSVP Dashboard route: /rsvp.
+
 
 # Feature 9 (Allen)
 
