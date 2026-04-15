@@ -7,6 +7,8 @@ import { CreateApp } from "./app";
 import { CreateHomeController } from "./home/HomeController";
 import { CreateInMemoryHomeContentRepository } from "./home/InMemoryHomeRepository";
 import { CreateHomeService } from "./home/HomeService";
+import { CreateRsvpDashboardController } from "./home/RsvpDashboardController";
+import { CreateRsvpDashboardService } from "./home/RsvpDashboardService";
 import type { IApp } from "./contracts";
 import { CreateLoggingService } from "./service/LoggingService";
 import type { ILoggingService } from "./service/LoggingService";
@@ -23,6 +25,8 @@ export function createComposedApp(logger?: ILoggingService): IApp {
   const homeContentRepository = CreateInMemoryHomeContentRepository();
   const homeService = CreateHomeService(homeContentRepository);
   const homeController = CreateHomeController(homeService, resolvedLogger);
+  const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
+  const rsvpDashboardController = CreateRsvpDashboardController(rsvpDashboardService, resolvedLogger);
 
   return CreateApp(authController, homeController, resolvedLogger);
 }
