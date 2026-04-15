@@ -28,6 +28,14 @@ export type RsvpDashboardError = {
   message: string;
 };
 
+function ValidationError(message: string): RsvpDashboardError {
+  return { name: "ValidationError", message };
+}
+
+function UnexpectedDependencyError(message: string): RsvpDashboardError {
+  return { name: "UnexpectedDependencyError", message };
+}
+
 export interface IRsvpDashboardService {
   getRsvpDashboardData(
     actor: IAuthenticatedUser,
@@ -99,10 +107,7 @@ class RsvpDashboardService implements IRsvpDashboardService {
   ): Promise<Result<IRsvpDashboardData, RsvpDashboardError>> {
     const rsvpsResult = await this.repository.listRsvpsForUser(actor.id);
     if (rsvpsResult.ok === false) {
-      return Err({
-        name: "UnexpectedDependencyError",
-        message: rsvpsResult.value.message,
-      });
+      return Err(UnexpectedDependencyError(rsvpsResult.value.message));
     }
 
     const upcomingRsvps: IRsvpDashboardItem[] = [];
@@ -111,18 +116,12 @@ class RsvpDashboardService implements IRsvpDashboardService {
     for (const rsvp of rsvpsResult.value) {
       const eventResult = await this.repository.findEventById(rsvp.eventId);
       if (eventResult.ok === false) {
-        return Err({
-          name: "UnexpectedDependencyError",
-          message: eventResult.value.message,
-        });
+        return Err(UnexpectedDependencyError(eventResult.value.message));
       }
 
       const event = eventResult.value;
       if (!event) {
-        return Err({
-          name: "UnexpectedDependencyError",
-          message: "Unable to resolve event details for an RSVP.",
-        });
+        return Err(UnexpectedDependencyError("Unable to resolve event details for an RSVP."));
       }
 
       const item = toDashboardItem(rsvp, event);
@@ -142,48 +141,30 @@ class RsvpDashboardService implements IRsvpDashboardService {
   ): Promise<Result<void, RsvpDashboardError>> {
     const rsvpsResult = await this.repository.listRsvpsForUser(actor.id);
     if (rsvpsResult.ok === false) {
-      return Err({
-        name: "UnexpectedDependencyError",
-        message: rsvpsResult.value.message,
-      });
+      return Err(UnexpectedDependencyError(rsvpsResult.value.message));
     }
 
     const rsvp = rsvpsResult.value.find((entry) => entry.id === rsvpId);
     if (!rsvp) {
-      return Err({
-        name: "ValidationError",
-        message: "RSVP not found.",
-      });
+      return Err(ValidationError("RSVP not found."));
     }
 
     if (rsvp.status === "cancelled") {
-      return Err({
-        name: "ValidationError",
-        message: "This RSVP has already been cancelled.",
-      });
+      return Err(ValidationError("This RSVP has already been cancelled."));
     }
 
     const eventResult = await this.repository.findEventById(rsvp.eventId);
     if (eventResult.ok === false) {
-      return Err({
-        name: "UnexpectedDependencyError",
-        message: eventResult.value.message,
-      });
+      return Err(UnexpectedDependencyError(eventResult.value.message));
     }
 
     const event = eventResult.value;
     if (!event) {
-      return Err({
-        name: "UnexpectedDependencyError",
-        message: "Unable to resolve event details for the RSVP.",
-      });
+      return Err(UnexpectedDependencyError("Unable to resolve event details for the RSVP."));
     }
 
     if (event.status === "past" || event.status === "cancelled") {
-      return Err({
-        name: "ValidationError",
-        message: "Cannot cancel an RSVP for a past or cancelled event.",
-      });
+      return Err(ValidationError("Cannot cancel an RSVP for a past or cancelled event."));
     }
 
     const upsertResult = await this.repository.upsertRsvp({
@@ -194,10 +175,7 @@ class RsvpDashboardService implements IRsvpDashboardService {
     });
 
     if (upsertResult.ok === false) {
-      return Err({
-        name: "UnexpectedDependencyError",
-        message: upsertResult.value.message,
-      });
+      return Err(UnexpectedDependencyError(upsertResult.value.message));
     }
 
     return Ok(undefined);

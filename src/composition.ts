@@ -28,5 +28,5 @@ export function createComposedApp(logger?: ILoggingService): IApp {
   const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
   const rsvpDashboardController = CreateRsvpDashboardController(rsvpDashboardService, resolvedLogger);
 
-  return CreateApp(authController, homeController, resolvedLogger);
+  return CreateApp(authController, homeController, rsvpDashboardController, resolvedLogger);
 }
