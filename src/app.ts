@@ -4,6 +4,7 @@ import session from "express-session";
 import Layouts from "express-ejs-layouts";
 import { IAuthController } from "./auth/AuthController";
 import type { IHomeController } from "./home/HomeController";
+import type { IRsvpDashboardController } from "./home/RsvpDashboardController";
 import {
   AuthenticationRequired,
   AuthorizationRequired,
@@ -36,6 +37,7 @@ class ExpressApp implements IApp {
   constructor(
     private readonly authController: IAuthController,
     private readonly homeController: IHomeController,
+    private readonly rsvpDashboardController: IRsvpDashboardController,
     private readonly logger: ILoggingService,
   ) {
     this.app = express();
@@ -217,6 +219,28 @@ class ExpressApp implements IApp {
       }),
     );
 
+    this.app.get(
+      "/rsvp",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.rsvpDashboardController.showRsvpDashboard(req, res);
+      }),
+    );
+
+    this.app.post(
+      "/rsvp/:id/cancel",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.rsvpDashboardController.cancelRsvp(req, res);
+      }),
+    );
+
     // ── Error handler ────────────────────────────────────────────────
 
     this.app.use((err: unknown, _req: Request, res: Response, _next: (value?: unknown) => void) => {
@@ -237,7 +261,8 @@ class ExpressApp implements IApp {
 export function CreateApp(
   authController: IAuthController,
   homeController: IHomeController,
+  rsvpDashboardController: IRsvpDashboardController,
   logger: ILoggingService,
 ): IApp {
-  return new ExpressApp(authController, homeController, logger);
+  return new ExpressApp(authController, homeController, rsvpDashboardController, logger);
 }
