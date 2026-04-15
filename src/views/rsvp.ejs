@@ -1,0 +1,113 @@
+<section class="mb-5 p-6 border border-slate-200 rounded-2xl bg-gradient-to-b from-white to-slate-50 shadow-lg">
+  <h1 class="text-3xl font-bold text-slate-900 mb-3">Your RSVP Dashboard</h1>
+  <p class="text-slate-500">
+    Review the events you have RSVP’d to and manage any upcoming attendance without leaving this page.
+  </p>
+</section>
+
+<% if (pageError) { %>
+  <%- include("partials/error", { message: pageError }) %>
+<% } %>
+
+<section class="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+  <div class="space-y-5">
+    <section class="p-6 border border-slate-200 rounded-2xl bg-white shadow-lg">
+      <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-xl font-semibold mb-1">Upcoming RSVPs</h2>
+          <p class="text-slate-500">Events you plan to attend or are currently waitlisted for.</p>
+        </div>
+        <span class="inline-flex items-center rounded-full bg-blue-100 text-blue-700 px-3 py-1 text-sm font-semibold">
+          <%= (dashboard?.upcomingRsvps?.length ?? 0) %> events
+        </span>
+      </div>
+
+      <% if ((dashboard?.upcomingRsvps?.length ?? 0) === 0) { %>
+        <p class="text-slate-500">You have no upcoming RSVPs at the moment.</p>
+      <% } else { %>
+        <div class="space-y-4">
+          <% for (const rsvp of dashboard.upcomingRsvps) { %>
+            <article class="rounded-2xl border border-slate-200 p-5 bg-slate-50">
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div class="space-y-2">
+                  <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                    <span class="rounded-full bg-slate-100 px-2 py-1 capitalize"><%= rsvp.status %></span>
+                    <span><%= rsvp.category %></span>
+                    <span>·</span>
+                    <span><%= rsvp.location %></span>
+                  </div>
+                  <h3 class="text-lg font-semibold text-slate-900"><%= rsvp.title %></h3>
+                  <p class="text-sm text-slate-600"><%= rsvp.dateLabel %> · <%= rsvp.timeLabel %></p>
+                </div>
+
+                <div class="flex flex-col items-start gap-3 sm:items-end">
+                  <span class="text-sm text-slate-500">RSVP status: <strong class="text-slate-900"><%= rsvp.rsvpStatus %></strong></span>
+                  <form method="post" action="/rsvp/<%= rsvp.id %>/cancel" class="m-0">
+                    <button
+                      type="submit"
+                      class="inline-flex items-center justify-center rounded-xl bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800"
+                    >
+                      Cancel RSVP
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </article>
+          <% } %>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="p-6 border border-slate-200 rounded-2xl bg-white shadow-lg">
+      <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-xl font-semibold mb-1">Past & Cancelled RSVPs</h2>
+          <p class="text-slate-500">Events you previously attended, skipped, or cancelled.</p>
+        </div>
+        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
+          <%= (dashboard?.pastRsvps?.length ?? 0) %> items
+        </span>
+      </div>
+
+      <% if ((dashboard?.pastRsvps?.length ?? 0) === 0) { %>
+        <p class="text-slate-500">No past or cancelled RSVP history is available yet.</p>
+      <% } else { %>
+        <div class="space-y-4">
+          <% for (const rsvp of dashboard.pastRsvps) { %>
+            <article class="rounded-2xl border border-slate-200 p-5 bg-slate-50">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 class="text-lg font-semibold text-slate-900"><%= rsvp.title %></h3>
+                  <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                    <span><%= rsvp.dateLabel %></span>
+                    <span>·</span>
+                    <span><%= rsvp.location %></span>
+                    <span>·</span>
+                    <span class="capitalize"><%= rsvp.rsvpStatus %></span>
+                  </div>
+                </div>
+                <span class="text-sm text-slate-600"><%= rsvp.eventStatus %></span>
+              </div>
+            </article>
+          <% } %>
+        </div>
+      <% } %>
+    </section>
+  </div>
+
+  <aside class="space-y-5">
+    <section class="p-6 border border-slate-200 rounded-2xl bg-white shadow-lg">
+      <h2 class="text-xl font-semibold mb-2">How it works</h2>
+      <p class="text-slate-500 text-sm leading-6">
+        This page shows events based on your current RSVP status. Upcoming RSVPs include events you are attending or waitlisted for. Past and cancelled items are grouped separately to keep your dashboard clean.
+      </p>
+    </section>
+
+    <section class="p-6 border border-slate-200 rounded-2xl bg-white shadow-lg">
+      <h2 class="text-xl font-semibold mb-2">Member access only</h2>
+      <p class="text-slate-500 text-sm leading-6">
+        Organizers do not attend events, so this dashboard is designed only for members with RSVP privileges. Staff and admin users should not be able to view or use this page.
+      </p>
+    </section>
+  </aside>
+</section>
