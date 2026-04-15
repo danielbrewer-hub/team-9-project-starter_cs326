@@ -1,9 +1,7 @@
 import { Err, Ok, type Result } from "../lib/result";
 import type { IAuthenticatedUser } from "../auth/User";
 import type {
-  IAlpineDemoContent,
   IHomeContentRepository,
-  IHomeTip,
 } from "./HomeRepository";
 
 export type HomeServiceError = {
@@ -15,8 +13,15 @@ export interface IHomePageData {
   welcomeTitle: string;
   welcomeMessage: string;
   signedInSummary: string;
-  gettingStartedTips: IHomeTip[];
-  alpineDemo: IAlpineDemoContent;
+  eventSummary: string[];
+  recentEvents: Array<{
+    id: string;
+    title: string;
+    status: string;
+    location: string;
+    category: string;
+    attendeeCount: number;
+  }>;
 }
 
 export interface IHomeService {
@@ -35,23 +40,42 @@ class HomeService implements IHomeService {
   async getHomePageData(
     actor: IAuthenticatedUser,
   ): Promise<Result<IHomePageData, HomeServiceError>> {
-    const tipsResult = await this.contentRepository.listGettingStartedTips();
-    if (tipsResult.ok === false) {
-      return Err(UnexpectedDependencyError(tipsResult.value.message));
+    const eventsResult = await this.contentRepository.listEvents();
+    if (eventsResult.ok === false) {
+      return Err(UnexpectedDependencyError(eventsResult.value.message));
     }
 
-    const alpineDemoResult = await this.contentRepository.getAlpineDemoContent();
-    if (alpineDemoResult.ok === false) {
-      return Err(UnexpectedDependencyError(alpineDemoResult.value.message));
+    const recentEvents: IHomePageData["recentEvents"] = [];
+    for (const event of eventsResult.value) {
+      const rsvpResult = await this.contentRepository.listRsvpsForEvent(event.id);
+      if (rsvpResult.ok === false) {
+        return Err(UnexpectedDependencyError(rsvpResult.value.message));
+      }
+
+      recentEvents.push({
+        id: event.id,
+        title: event.title,
+        status: event.status,
+        location: event.location,
+        category: event.category,
+        attendeeCount: rsvpResult.value.filter((rsvp) => rsvp.status === "going").length,
+      });
     }
+
+    const publishedCount = eventsResult.value.filter((event) => event.status === "published").length;
+    const organizerCount = new Set(eventsResult.value.map((event) => event.organizerId)).size;
 
     return Ok({
       welcomeTitle: "Welcome to Project Starter",
       welcomeMessage:
-        "You are signed in and ready to build. This page now flows through a repository, service, and controller so the starter demonstrates the intended architecture.",
+        "You are signed in and ready to build. The in-memory repository now models events and RSVPs behind exported repository functions.",
       signedInSummary: `${actor.displayName} (${actor.email}, role: ${actor.role})`,
-      gettingStartedTips: tipsResult.value,
-      alpineDemo: alpineDemoResult.value,
+      eventSummary: [
+        `${eventsResult.value.length} total events`,
+        `${publishedCount} published events`,
+        `${organizerCount} organizers represented`,
+      ],
+      recentEvents: recentEvents.slice(0, 5),
     });
   }
 }
