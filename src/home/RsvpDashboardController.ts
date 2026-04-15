@@ -6,38 +6,7 @@ import {
   type IAppBrowserSession,
 } from "../session/AppSession";
 import type { ILoggingService } from "../service/LoggingService";
-import type { Result } from "../lib/result";
-
-export interface IRsvpDashboardItem {
-  id: string;
-  title: string;
-  category: string;
-  location: string;
-  dateLabel: string;
-  timeLabel: string;
-  rsvpStatus: string;
-  eventStatus: string;
-}
-
-export interface IRsvpDashboardData {
-  upcomingRsvps: IRsvpDashboardItem[];
-  pastRsvps: IRsvpDashboardItem[];
-}
-
-export type RsvpDashboardError = {
-  name: "ValidationError" | "UnexpectedDependencyError" | "AuthorizationRequired";
-  message: string;
-};
-
-export interface IRsvpDashboardService {
-  getRsvpDashboardData(
-    actor: IAuthenticatedUser,
-  ): Promise<Result<IRsvpDashboardData, RsvpDashboardError>>;
-  cancelRsvp(
-    rsvpId: string,
-    actor: IAuthenticatedUser,
-  ): Promise<Result<void, RsvpDashboardError>>;
-}
+import type { IRsvpDashboardService } from "./RsvpDashboardService";
 
 export interface IRsvpDashboardController {
   showRsvpDashboard(req: Request, res: Response): Promise<void>;

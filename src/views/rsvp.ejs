@@ -9,7 +9,7 @@
   <%- include("partials/error", { message: pageError }) %>
 <% } %>
 
-<section class="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+<section class="grid gap-5">
   <div class="space-y-5">
     <section class="p-6 border border-slate-200 rounded-2xl bg-white shadow-lg">
       <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -65,7 +65,7 @@
           <p class="text-slate-500">Events you previously attended, skipped, or cancelled.</p>
         </div>
         <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
-          <%= (dashboard?.pastRsvps?.length ?? 0) %> items
+          <%= (dashboard?.pastRsvps?.length ?? 0) %> events
         </span>
       </div>
 
@@ -94,20 +94,4 @@
       <% } %>
     </section>
   </div>
-
-  <aside class="space-y-5">
-    <section class="p-6 border border-slate-200 rounded-2xl bg-white shadow-lg">
-      <h2 class="text-xl font-semibold mb-2">How it works</h2>
-      <p class="text-slate-500 text-sm leading-6">
-        This page shows events based on your current RSVP status. Upcoming RSVPs include events you are attending or waitlisted for. Past and cancelled items are grouped separately to keep your dashboard clean.
-      </p>
-    </section>
-
-    <section class="p-6 border border-slate-200 rounded-2xl bg-white shadow-lg">
-      <h2 class="text-xl font-semibold mb-2">Member access only</h2>
-      <p class="text-slate-500 text-sm leading-6">
-        Organizers do not attend events, so this dashboard is designed only for members with RSVP privileges. Staff and admin users should not be able to view or use this page.
-      </p>
-    </section>
-  </aside>
 </section>

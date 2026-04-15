@@ -11,13 +11,23 @@
   <body class="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 text-slate-900 p-6">
     <div class="max-w-5xl mx-auto">
       <nav class="flex items-center justify-between gap-3 mb-6 flex-wrap">
-        <a
-          href="<%= session?.authenticatedUser ? '/home' : '/login' %>"
-          class="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border border-slate-200 shadow-lg font-bold text-slate-900 no-underline"
-        >
-          <span class="w-2.5 h-2.5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600"></span>
-          Project Starter
-        </a>
+        <div class="flex items-center gap-3 flex-wrap">
+          <a
+            href="<%= session?.authenticatedUser ? '/home' : '/login' %>"
+            class="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border border-slate-200 shadow-lg font-bold text-slate-900 no-underline"
+          >
+            <span class="w-2.5 h-2.5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600"></span>
+            Project Starter
+          </a>
+          <% if (session?.authenticatedUser && session.authenticatedUser.role === "user") { %>
+            <a
+              href="/rsvp"
+              class="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border border-slate-200 shadow-lg font-bold text-slate-900 no-underline"
+            >
+              RSVP Dashboard
+            </a>
+          <% } %>
+        </div>
         <div class="flex items-center gap-3 flex-wrap">
           <% if (session?.authenticatedUser) { %>
             <% if (session.authenticatedUser.role === "admin") { %>
