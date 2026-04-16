@@ -1,6 +1,6 @@
 <form
   class="edit-form"
-  hx-put="/events/<%= event._id %>"
+  hx-put="/events/<%= event.id %>"
   hx-target="closest .event-container"
   hx-swap="outerHTML"
 >
@@ -13,8 +13,8 @@
     required
   />
 
-  <label for="body">Description</label>
-  <textarea id="body" name="body" rows="3" required><%= event.body %></textarea>
+  <label for="description">Description</label>
+  <textarea id="description" name="description" rows="3" required><%= event.description %></textarea>
 
   <label for="location">Location</label>
   <input
@@ -43,7 +43,7 @@
   />
 
   <button type="submit">Submit Changes</button>
-  <button type="button" hx-get="/events/<%= event._id %>" hx-target="closest .event-container" hx-swap="outerHTML">
+  <button type="button" hx-get="/events/<%= event.id %>" hx-target="closest .event-container" hx-swap="outerHTML">
     Cancel
   </button>
 </form>
