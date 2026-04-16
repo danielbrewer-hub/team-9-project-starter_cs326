@@ -2,6 +2,7 @@ import { Err, Ok, type Result } from "../lib/result";
 import type { IAuthenticatedUser } from "../auth/User";
 import { canViewEvent } from "../events/EventVisibility";
 import type {
+  IEventRecord,
   IHomeContentRepository,
 } from "./HomeRepository";
 
@@ -54,6 +55,14 @@ function ForbiddenError(message: string): HomeServiceError {
 
 function InvalidTransitionError(message: string): HomeServiceError {
   return { name: "InvalidTransitionError", message };
+}
+
+function NotFoundError(message: string): HomeServiceError {
+  return { name: "NotFoundError", message };
+}
+
+function ValidationError(message: string): HomeServiceError {
+  return { name: "ValidationError", message };
 }
 
 class HomeService implements IHomeService {
