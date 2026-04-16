@@ -101,7 +101,8 @@ class EventDetailService implements IEventDetailService {
       const isFull = typeof event.capacity === "number" && goingCountResult.value >= event.capacity;
 
       // 4. Decide new status
-      let newStatus;
+
+      let newStatus: "going" | "waitlisted" | "cancelled";
       if (existingRsvp && existingRsvp.status === "going") {
         newStatus = "cancelled";
       } else if (isFull) {

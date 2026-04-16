@@ -107,7 +107,7 @@ class EventDetailController implements IEventDetailController {
     }
 
     return {
-      id: authenticatedUser.userId,
+      userId: authenticatedUser.userId,
       email: authenticatedUser.email,
       displayName: authenticatedUser.displayName,
       role: authenticatedUser.role,
