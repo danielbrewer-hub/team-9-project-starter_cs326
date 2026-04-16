@@ -209,6 +209,26 @@ class ExpressApp implements IApp {
       }),
     );
 
+    this.app.put(
+  "/events/:id/publish",
+  asyncHandler(async (req, res) => {
+    if (!this.requireRole(req, res, ["admin", "staff"], "Only staff and admins may publish events.")) {
+      return;
+    }
+    await this.eventLifecycleController.publishEvent(req, res);
+  }),
+);
+
+this.app.put(
+  "/events/:id/cancel",
+  asyncHandler(async (req, res) => {
+    if (!this.requireRole(req, res, ["admin", "staff"], "Only staff and admins may cancel events.")) {
+      return;
+    }
+    await this.eventLifecycleController.cancelEvent(req, res);
+  }),
+);
+
     // ── Authenticated home page ──────────────────────────────────────
     // TODO: Replace this placeholder with your project's main page.
 
