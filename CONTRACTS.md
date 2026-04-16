@@ -11,7 +11,75 @@
 # Feature 6 (Aditya)
 
 # Feature 7 (Isik)
-RSVP Dashboard route: /rsvp.
+Routes:
+GET /rsvp -> rsvpDashboardController.showRsvpDashboard()
+POST /rsvp/:id/cancel -> rsvpDashboardController.cancelRsvp()
+
+Interfaces:
+IRsvpRecord: A single RSVP for the repository:
+export interface IRsvpRecord {
+  id: string;
+  eventId: string;
+  userId: string;
+  status: RsvpStatus;
+  createdAt: string;
+}
+IRsvpDashboardItem: A single RSVP:
+    export interface IRsvpDashboardItem {
+    id: string;
+    title: string;
+    category: string;
+    location: string;
+    dateLabel: string;
+    timeLabel: string;
+    rsvpStatus: string;
+    eventStatus: string;
+    }
+IRsvpDashboardData: The RSVP internal data type:
+    export interface IRsvpDashboardData {
+    upcomingRsvps: IRsvpDashboardItem[];
+    pastRsvps: IRsvpDashboardItem[];
+    }
+IRsvpDashboardController: The controller for the dashboard:
+    export interface IRsvpDashboardController {
+    showRsvpDashboard(req: Request, res: Response): Promise<void>;
+    cancelRsvp(req: Request, res: Response): Promise<void>;
+    }
+IRsvpDashboardService: The service for the dashboard:
+    export interface IRsvpDashboardService {
+    getRsvpDashboardData(
+        actor: IAuthenticatedUser,
+    ): Promise<Result<IRsvpDashboardData, RsvpDashboardError>>;
+    cancelRsvp(
+        rsvpId: string,
+        actor: IAuthenticatedUser,
+    ): Promise<Result<void, RsvpDashboardError>>;
+    }
+
+Error Type:
+RsvpDashboardError: Union type for any potential RSVP related errors:
+    export type RsvpDashboardError = {
+    name: "ValidationError" | "UnexpectedDependencyError";
+    message: string;
+    };
+
+Factory Helpers:
+For RsvpDashboardController:
+  constructor(
+    private readonly service: IRsvpDashboardService,
+    private readonly logger: ILoggingService,
+  ) {}
+For RsvpDashboardService:
+  constructor(private readonly repository: IHomeContentRepository) {}
+
+Other Helpers:
+In HomeRepository.ts:
+  listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>>;
+    Returns all RSVP records for an event
+  listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
+    Returns all RSVP records for a user
+  upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>>;
+    Creates or updates an RSVP record. Returns the updated value.
 
 
 # Feature 9 (Allen)
