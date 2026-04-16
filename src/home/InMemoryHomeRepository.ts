@@ -9,7 +9,9 @@ import type {
 } from "./HomeRepository";
 import {
   DEMO_DRAFT_EVENT_ID as draftEventId,
+  DEMO_DRAFT_EVENT_ORGANIZER_ID as draftOrganizerId,
   DEMO_PUBLISHED_EVENT_ID as publishedEventId,
+  DEMO_PUBLISHED_EVENT_ORGANIZER_ID as publishedOrganizerId,
 } from "./HomeRepository";
 
 const events = new Map<string, IEventRecord>();
@@ -114,7 +116,7 @@ function seedRepository(): void {
     capacity: 12,
     startDatetime: "2026-04-18T14:00:00.000Z",
     endDatetime: "2026-04-18T15:30:00.000Z",
-    organizerId: "user-admin",
+    organizerId: publishedOrganizerId,
   });
 
   createStoredEvent({
@@ -126,7 +128,7 @@ function seedRepository(): void {
     status: "draft",
     startDatetime: "2026-04-20T18:00:00.000Z",
     endDatetime: "2026-04-20T19:00:00.000Z",
-    organizerId: "user-staff",
+    organizerId: draftOrganizerId,
   });
 
   upsertStoredRsvp({

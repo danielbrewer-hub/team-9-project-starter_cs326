@@ -5,6 +5,8 @@ export type RsvpStatus = "going" | "waitlisted" | "cancelled";
 
 export const DEMO_PUBLISHED_EVENT_ID = "event-1";
 export const DEMO_DRAFT_EVENT_ID = "event-2";
+export const DEMO_PUBLISHED_EVENT_ORGANIZER_ID = "user-admin";
+export const DEMO_DRAFT_EVENT_ORGANIZER_ID = "user-staff";
 
 export interface IEventRecord {
   id: string;
