@@ -16,15 +16,24 @@ GET /rsvp -> rsvpDashboardController.showRsvpDashboard()
 POST /rsvp/:id/cancel -> rsvpDashboardController.cancelRsvp()
 
 Interfaces:
-IRsvpRecord: A single RSVP for the repository:
-export interface IRsvpRecord {
-  id: string;
-  eventId: string;
-  userId: string;
-  status: RsvpStatus;
-  createdAt: string;
-}
-IRsvpDashboardItem: A single RSVP:
+RsvpStatus: Union type for an RSVP status:
+    export type RsvpStatus = "going" | "waitlisted" | "cancelled";
+ICreateRsvpInput: Type used to create or update an Rsvp entry:
+    export interface ICreateRsvpInput {
+    id: string;
+    eventId: string;
+    userId: string;
+    status: RsvpStatus;
+    }
+IRsvpRecord: A single RSVP for the repository (internal):
+    export interface IRsvpRecord {
+    id: string;
+    eventId: string;
+    userId: string;
+    status: RsvpStatus;
+    createdAt: string;
+    }
+IRsvpDashboardItem: A single RSVP used in the dashboard:
     export interface IRsvpDashboardItem {
     id: string;
     title: string;
@@ -35,7 +44,7 @@ IRsvpDashboardItem: A single RSVP:
     rsvpStatus: string;
     eventStatus: string;
     }
-IRsvpDashboardData: The RSVP internal data type:
+IRsvpDashboardData: A list of RSVPs:
     export interface IRsvpDashboardData {
     upcomingRsvps: IRsvpDashboardItem[];
     pastRsvps: IRsvpDashboardItem[];
@@ -65,12 +74,18 @@ RsvpDashboardError: Union type for any potential RSVP related errors:
 
 Factory Helpers:
 For RsvpDashboardController:
-  constructor(
-    private readonly service: IRsvpDashboardService,
-    private readonly logger: ILoggingService,
-  ) {}
+    export function CreateRsvpDashboardController(
+    service: IRsvpDashboardService,
+    logger: ILoggingService,
+    ): IRsvpDashboardController {
+    return new RsvpDashboardController(service, logger);
+    }
 For RsvpDashboardService:
-  constructor(private readonly repository: IHomeContentRepository) {}
+    export function CreateRsvpDashboardService(
+    repository: IHomeContentRepository,
+    ): IRsvpDashboardService {
+    return new RsvpDashboardService(repository);
+    }
 
 Other Helpers:
 In HomeRepository.ts:
