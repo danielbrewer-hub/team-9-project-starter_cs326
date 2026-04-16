@@ -26,6 +26,8 @@
         <input
           type="text"
           name="title"
+          required
+          aria-invalid="<%= fieldErrors?.title ? 'true' : 'false' %>"
           value="<%= formValues?.title ?? '' %>"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
         />
@@ -39,6 +41,8 @@
         <input
           type="text"
           name="category"
+          required
+          aria-invalid="<%= fieldErrors?.category ? 'true' : 'false' %>"
           value="<%= formValues?.category ?? '' %>"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
         />
@@ -53,6 +57,8 @@
       <textarea
         name="description"
         rows="5"
+        required
+        aria-invalid="<%= fieldErrors?.description ? 'true' : 'false' %>"
         class="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
       ><%= formValues?.description ?? '' %></textarea>
       <% if (fieldErrors?.description) { %>
@@ -66,6 +72,8 @@
         <input
           type="text"
           name="location"
+          required
+          aria-invalid="<%= fieldErrors?.location ? 'true' : 'false' %>"
           value="<%= formValues?.location ?? '' %>"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
         />
@@ -81,6 +89,7 @@
           min="1"
           step="1"
           name="capacity"
+          aria-invalid="<%= fieldErrors?.capacity ? 'true' : 'false' %>"
           value="<%= formValues?.capacity ?? '' %>"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
         />
@@ -97,6 +106,8 @@
         <input
           type="datetime-local"
           name="startDatetime"
+          required
+          aria-invalid="<%= fieldErrors?.startDatetime ? 'true' : 'false' %>"
           value="<%= formValues?.startDatetime ?? '' %>"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
         />
@@ -110,6 +121,8 @@
         <input
           type="datetime-local"
           name="endDatetime"
+          required
+          aria-invalid="<%= fieldErrors?.endDatetime ? 'true' : 'false' %>"
           value="<%= formValues?.endDatetime ?? '' %>"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
         />
