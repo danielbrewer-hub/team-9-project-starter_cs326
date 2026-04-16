@@ -1,0 +1,49 @@
+<form
+  class="edit-form"
+  hx-put="/events/<%= event.id %>"
+  hx-target="closest .event-container"
+  hx-swap="outerHTML"
+>
+  <label for="title">Title</label>
+  <input
+    id="title"
+    name="title"
+    type="text"
+    value="<%= event.title %>"
+    required
+  />
+
+  <label for="description">Description</label>
+  <textarea id="description" name="description" rows="3" required><%= event.description %></textarea>
+
+  <label for="location">Location</label>
+  <input
+    id="location"
+    name="location"
+    type="text"
+    value="<%= event.location %>"
+    required
+  />
+
+  <label for="category">Category</label>
+  <input
+    id="category"
+    name="category"
+    type="text"
+    value="<%= event.category %>"
+    required
+  />
+
+  <label for="capacity">Capacity</label>
+  <input
+    id="capacity"
+    name="capacity"
+    type="number"
+    value="<%= event.capacity %>"
+  />
+
+  <button type="submit">Submit Changes</button>
+  <button type="button" hx-get="/events/<%= event.id %>" hx-target="closest .event-container" hx-swap="outerHTML">
+    Cancel
+  </button>
+</form>
