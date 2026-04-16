@@ -5,7 +5,7 @@ import type {
 } from "./HomeRepository";
 
 export type HomeServiceError = {
-  name: "UnexpectedDependencyError";
+  name: "UnexpectedDependencyError" | "NotFoundError" | "ValidationError";
   message: string;
 };
 
@@ -26,7 +26,7 @@ export interface IHomePageData {
 
 export interface IEventUpdateFields {
   title: string;
-  body: string;
+  description: string;
   location: string;
   category: string;
   capacity?: number;
@@ -48,6 +48,15 @@ function UnexpectedDependencyError(message: string): HomeServiceError {
   return { name: "UnexpectedDependencyError", message };
 }
 
+function NotFoundError(message: string): HomeServiceError {
+  return { name: "NotFoundError", message };
+}
+
+function ValidationError(message: string): HomeServiceError {
+  return { name: "ValidationError", message };
+}
+
+
 class HomeService implements IHomeService {
   constructor(private readonly contentRepository: IHomeContentRepository) {}
 
@@ -67,7 +76,7 @@ class HomeService implements IHomeService {
 
     const updateResult = await this.contentRepository.updateEvent(eventId, {
       title: fields.title,
-      body: fields.body,
+      description: fields.body,
       location: fields.location,
       category: fields.category,
       ...(fields.capacity !== undefined && { capacity: fields.capacity }),
@@ -76,6 +85,10 @@ class HomeService implements IHomeService {
     if (updateResult.ok === false) {
       return Err(UnexpectedDependencyError(updateResult.value.message));
     }
+
+    if (updateResult.value === null) {
+    return Err(NotFoundError(`Event ${eventId} disappeared during update.`));
+  }
 
     const updated = updateResult.value;
 
