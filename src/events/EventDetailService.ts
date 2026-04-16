@@ -17,6 +17,11 @@ export interface IEventDetailService {
   ): Promise<Result<IEventDetailView, EventDetailError>>;
 }
 
+function normalizeEventId(eventId: string): string | null {
+  const trimmed = eventId.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function canViewEventDetail(event: IEventRecord, actor: IActingUser): boolean {
   if (event.status !== "draft") {
     return true;
@@ -62,7 +67,12 @@ class EventDetailService implements IEventDetailService {
     eventId: string,
     actor: IActingUser,
   ): Promise<Result<IEventDetailView, EventDetailError>> {
-    const eventResult = await this.contentRepository.findEventById(eventId);
+    const normalizedEventId = normalizeEventId(eventId);
+    if (!normalizedEventId) {
+      return Err(EventNotFoundError("Event not found."));
+    }
+
+    const eventResult = await this.contentRepository.findEventById(normalizedEventId);
     if (eventResult.ok === false) {
       return Err(UnexpectedDependencyError(eventResult.value.message));
     }
@@ -100,4 +110,9 @@ export function CreateEventDetailService(
   return new EventDetailService(contentRepository, userRepository);
 }
 
-export { buildEventPermissionFlags, canViewEventDetail, toEventDetailView };
+export {
+  buildEventPermissionFlags,
+  canViewEventDetail,
+  normalizeEventId,
+  toEventDetailView,
+};
