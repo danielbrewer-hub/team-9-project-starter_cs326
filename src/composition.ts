@@ -16,6 +16,8 @@ import { CreateRsvpDashboardService } from "./home/RsvpDashboardService";
 import type { IApp } from "./contracts";
 import { CreateLoggingService } from "./service/LoggingService";
 import type { ILoggingService } from "./service/LoggingService";
+import { CreateEventLifecycleService } from "./events/EventLifecycleService";
+import { CreateEventLifecycleController } from "./events/EventLifecycleController";
 
 export function createComposedApp(logger?: ILoggingService): IApp {
   const resolvedLogger = logger ?? CreateLoggingService();
@@ -41,6 +43,8 @@ export function createComposedApp(logger?: ILoggingService): IApp {
   const homeController = CreateHomeController(homeService, resolvedLogger);
   const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
   const rsvpDashboardController = CreateRsvpDashboardController(rsvpDashboardService, resolvedLogger);
+  const eventLifecycleService = CreateEventLifecycleService(homeContentRepository,userRepository);
+const eventLifecycleController = CreateEventLifecycleController(eventLifecycleService,logger);
 
   return CreateApp(
     authController,
