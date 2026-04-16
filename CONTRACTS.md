@@ -1,32 +1,181 @@
-# Service Contracts
+# Feature 1 (Aaron)
+Routes:
+GET /events/new -> eventCreationController.showCreateEventForm()
+POST /events -> eventCreationController.createEventFromForm()
 
-These contracts describe the public service interfaces that Features 1 and 2
-depend on during Sprint 1. All service methods return the shared
-`Result<T, E>` type from `src/lib/result.ts`.
+Interfaces:
+EventStatus: Union type for an event status:
+    export type EventStatus = "draft" | "published" | "cancelled" | "past";
+IEventRecord: Shared stored event record used by the repository and both event features:
+    export interface IEventRecord {
+    id: string;
+    title: string;
+    description: string;
+    location: string;
+    category: string;
+    status: EventStatus;
+    capacity?: number;
+    startDatetime: string;
+    endDatetime: string;
+    organizerId: string;
+    createdAt: string;
+    updatedAt: string;
+    }
+IActingUser: Session-derived identity passed into event services:
+    export interface IActingUser {
+    userId: string;
+    role: UserRole;
+    }
+ICreateEventInput: Form payload used by the creation flow:
+    export interface ICreateEventInput {
+    title: string;
+    description: string;
+    location: string;
+    category: string;
+    capacity?: string;
+    startDatetime: string;
+    endDatetime: string;
+    }
+HomeRepository ICreateEventInput: Repository payload used after validation to store a new event:
+    export interface ICreateEventInput {
+    id: string;
+    title: string;
+    description: string;
+    location: string;
+    category: string;
+    status: EventStatus;
+    capacity?: number;
+    startDatetime: string;
+    endDatetime: string;
+    organizerId: string;
+    }
+IEventCreationController: The controller for the event creation flow:
+    export interface IEventCreationController {
+    showCreateEventForm(req: Request, res: Response): Promise<void>;
+    createEventFromForm(req: Request, res: Response): Promise<void>;
+    }
+IEventCreationService: The service that validates input and creates draft events:
+    export interface IEventCreationService {
+    createEvent(
+        input: ICreateEventInput,
+        actor: IActingUser,
+    ): Promise<Result<IEventRecord, EventCreationError>>;
+    }
 
-Controller boundary notes:
-- Controllers parse request bodies, params, and session state.
-- Services never read from the session directly.
-- `ActingUser` is derived from the authenticated session and passed into the
-  service explicitly.
+Error Type:
+EventValidationError: Validation failure for bad form input:
+    export type EventValidationError = {
+    name: "EventValidationError";
+    message: string;
+    field?: string;
+    };
+EventAuthorizationError: Returned when a non-organizer tries to create an event:
+    export type EventAuthorizationError = {
+    name: "EventAuthorizationError";
+    message: string;
+    };
+EventUnexpectedDependencyError: Returned when the repository fails unexpectedly:
+    export type EventUnexpectedDependencyError = {
+    name: "UnexpectedDependencyError";
+    message: string;
+    };
+EventCreationError: Union type for creation failures:
+    export type EventCreationError =
+    | EventValidationError
+    | EventAuthorizationError
+    | EventUnexpectedDependencyError;
 
-## Shared Types
+Factory Helpers:
+For EventCreationController:
+    export function CreateEventCreationController(
+    service: IEventCreationService,
+    logger: ILoggingService,
+    ): IEventCreationController {
+    return new EventCreationController(service, logger);
+    }
+For EventCreationService:
+    export function CreateEventCreationService(
+    contentRepository: IHomeContentRepository,
+    ): IEventCreationService {
+    return new EventCreationService(contentRepository);
+    }
 
-```ts
-type ActingUser = {
-  userId: string;
-  role: UserRole;
-};
+Other Helpers:
+In HomeRepository.ts:
+  createEvent(input: ICreateEventInput): Promise<Result<IEventRecord, Error>>;
+    Stores the server-generated draft event record
 
-type CreateEventInput = {
-  title: string;
-  description: string;
-  location: string;
-  category: string;
-  capacity?: string;
-  startDatetime: string;
-  endDatetime: string;
-};
+
+# Feature 2 (Aaron)
+Routes:
+GET /events/:id -> eventDetailController.showEventDetail()
+
+Interfaces:
+IEventDetailView: Event record plus organizer and attendee data for the detail page:
+    export interface IEventDetailView extends IEventRecord {
+    organizerDisplayName: string;
+    attendeeCount: number;
+    canEdit: boolean;
+    canCancel: boolean;
+    canRsvp: boolean;
+    }
+IEventDetailController: The controller for the event detail page:
+    export interface IEventDetailController {
+    showEventDetail(req: Request, res: Response): Promise<void>;
+    }
+IEventDetailService: The service that loads and authorizes event detail data:
+    export interface IEventDetailService {
+    getEventDetail(
+        eventId: string,
+        actor: IActingUser,
+    ): Promise<Result<IEventDetailView, EventDetailError>>;
+    }
+
+Error Type:
+EventNotFoundError: Returned for missing events and unauthorized draft viewers:
+    export type EventNotFoundError = {
+    name: "EventNotFoundError";
+    message: string;
+    };
+EventDetailError: Union type for detail-page failures:
+    export type EventDetailError =
+    | EventNotFoundError
+    | EventUnexpectedDependencyError;
+
+Factory Helpers:
+For EventDetailController:
+    export function CreateEventDetailController(
+    service: IEventDetailService,
+    logger: ILoggingService,
+    ): IEventDetailController {
+    return new EventDetailController(service, logger);
+    }
+For EventDetailService:
+    export function CreateEventDetailService(
+    contentRepository: IHomeContentRepository,
+    userRepository: IUserRepository,
+    ): IEventDetailService {
+    return new EventDetailService(contentRepository, userRepository);
+    }
+
+Other Helpers:
+In HomeRepository.ts:
+  findEventById(eventId: string): Promise<Result<IEventRecord | null, Error>>;
+    Returns the stored event or null
+  countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>;
+    Counts only RSVPs with status "going" for the detail page
+In UserRepository.ts:
+  findById(id: string): Promise<Result<IUserRecord | null, AuthError>>;
+    Loads the organizer so the detail page can show organizerDisplayName
+
+
+# Feature 3 (Dan)
+
+# Feature 4 (Isik)
+
+# Feature 5 (Dan)
+
+# Feature 6 (Aditya)
 
 # Feature 7 (Isik)
 Routes:
@@ -114,143 +263,9 @@ In HomeRepository.ts:
   upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>>;
     Creates or updates an RSVP record. Returns the updated value.
 
-type EventDetailView = {
-  id: string;
-  title: string;
-  description: string;
-  location: string;
-  category: string;
-  status: "draft" | "published" | "cancelled" | "past";
-  capacity?: number;
-  startDatetime: string;
-  endDatetime: string;
-  organizerId: string;
-  organizerDisplayName: string;
-  attendeeCount: number;
-  canEdit: boolean;
-  canCancel: boolean;
-  canRsvp: boolean;
-};
-```
 
-Form ownership notes:
-- `CreateEventInput` contains only form-owned fields.
-- `organizerId`, `status`, `createdAt`, and `updatedAt` are always server-owned
-  fields and must never come from the browser.
+# Feature 9 (Allen)
 
-## Named Errors
+# Feature 10 (Aditya)
 
-```ts
-type EventValidationError = {
-  name: "EventValidationError";
-  message: string;
-  field?: keyof CreateEventInput;
-};
-
-type EventAuthorizationError = {
-  name: "EventAuthorizationError";
-  message: string;
-};
-
-type EventNotFoundError = {
-  name: "EventNotFoundError";
-  message: string;
-};
-
-type UnexpectedDependencyError = {
-  name: "UnexpectedDependencyError";
-  message: string;
-};
-```
-
-## Feature 1: Event Creation
-
-### `createEvent(input, actor)`
-
-```ts
-createEvent(
-  input: CreateEventInput,
-  actor: ActingUser,
-): Promise<Result<EventRecord, EventValidationError | EventAuthorizationError | UnexpectedDependencyError>>
-```
-
-Success result:
-- Returns the newly persisted event record.
-- Server-owned fields are generated by the service and repository:
-  `id`, `status`, `organizerId`, `createdAt`, `updatedAt`.
-- New events always start in `draft` status.
-
-Named errors:
-- `EventValidationError`
-  - Returned when required fields are blank, datetimes are invalid, capacity is
-    not a positive integer, or `endDatetime` is not after `startDatetime`.
-- `EventAuthorizationError`
-  - Returned when the acting user is not `staff` or `admin`.
-- `UnexpectedDependencyError`
-  - Returned when repository persistence fails unexpectedly.
-
-## Feature 2: Event Detail Page
-
-### `getEventDetail(eventId, actor)`
-
-```ts
-getEventDetail(
-  eventId: string,
-  actor: ActingUser,
-): Promise<Result<EventDetailView, EventNotFoundError | UnexpectedDependencyError>>
-```
-
-Success result:
-- Returns the event detail view for a published event visible to the acting
-  user.
-- Returns the detail view for a draft only when the acting user is the event
-  organizer or an admin.
-- Includes the organizer display name and the current count of `going` RSVPs.
-- Includes future-facing permission flags:
-  `canEdit`, `canCancel`, and `canRsvp`.
-
-Permission flag meaning:
-- `canEdit` is true for the organizer who owns the event and for admins.
-- `canCancel` follows the same rule as `canEdit`.
-- `canRsvp` is true only for members viewing a published event.
-
-Named errors:
-- `EventNotFoundError`
-  - Returned when the event ID does not exist.
-  - Also returned when a draft exists but the acting user is not allowed to see
-    it, so draft existence is not leaked.
-- `UnexpectedDependencyError`
-  - Returned when repository or user lookup fails unexpectedly.
-
-## Shared Dependency Contracts
-
-The event services above reuse existing repository boundaries already present on
-`dev`.
-
-### `IHomeContentRepository`
-
-```ts
-findEventById(eventId: string): Promise<Result<IEventRecord | null, Error>>
-createEvent(input: ICreateEventInput): Promise<Result<IEventRecord, Error>>
-countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>
-```
-
-Success result:
-- `findEventById` returns the stored event or `null`.
-- `createEvent` returns the stored event record, including timestamps.
-- `countGoingRsvpsForEvent` returns only the number of RSVPs whose status is
-  `going`.
-
-Visibility note:
-- Unauthorized draft viewers are handled in the Feature 2 service, not in the
-  repository. The repository returns the stored record when it exists.
-
-### `IUserRepository`
-
-```ts
-findById(id: string): Promise<Result<IUserRecord | null, AuthError>>
-```
-
-Success result:
-- Returns the organizer's user record so Feature 2 can render
-  `organizerDisplayName`.
+# Feature 12 (Allen)
