@@ -128,6 +128,25 @@ function normalizeCreateEventInput(
   });
 }
 
+function canCreateEvents(actor: IActingUser): boolean {
+  return actor.role === "staff" || actor.role === "admin";
+}
+
+function toStoredEventInput(normalized: NormalizedCreateEventInput, actor: IActingUser) {
+  return {
+    id: randomUUID(),
+    title: normalized.title,
+    description: normalized.description,
+    location: normalized.location,
+    category: normalized.category,
+    status: "draft" as const,
+    capacity: normalized.capacity,
+    startDatetime: normalized.startDatetime,
+    endDatetime: normalized.endDatetime,
+    organizerId: actor.userId,
+  };
+}
+
 class EventCreationService implements IEventCreationService {
   constructor(private readonly contentRepository: IHomeContentRepository) {}
 
@@ -135,7 +154,7 @@ class EventCreationService implements IEventCreationService {
     input: ICreateEventInput,
     actor: IActingUser,
   ): Promise<Result<IEventRecord, EventCreationError>> {
-    if (!["staff", "admin"].includes(actor.role)) {
+    if (!canCreateEvents(actor)) {
       return Err(EventAuthorizationError("Only organizers and admins can create events."));
     }
 
@@ -144,18 +163,9 @@ class EventCreationService implements IEventCreationService {
       return normalized;
     }
 
-    const createdResult = await this.contentRepository.createEvent({
-      id: randomUUID(),
-      title: normalized.value.title,
-      description: normalized.value.description,
-      location: normalized.value.location,
-      category: normalized.value.category,
-      status: "draft",
-      capacity: normalized.value.capacity,
-      startDatetime: normalized.value.startDatetime,
-      endDatetime: normalized.value.endDatetime,
-      organizerId: actor.userId,
-    });
+    const createdResult = await this.contentRepository.createEvent(
+      toStoredEventInput(normalized.value, actor),
+    );
 
     if (createdResult.ok === false) {
       return Err(
@@ -175,4 +185,4 @@ export function CreateEventCreationService(
   return new EventCreationService(contentRepository);
 }
 
-export { normalizeCreateEventInput };
+export { canCreateEvents, normalizeCreateEventInput, toStoredEventInput };
