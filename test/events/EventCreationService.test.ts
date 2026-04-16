@@ -106,4 +106,30 @@ describe("EventCreationService", () => {
       expect(result.value.name).toBe("EventAuthorizationError");
     }
   });
+
+  it("allows blank capacity and stores the event as unlimited", async () => {
+    const service = CreateEventCreationService(CreateInMemoryHomeContentRepository());
+
+    const result = await service.createEvent(
+      {
+        title: "Faculty Meetup",
+        description: "Open conversation with no attendance cap.",
+        location: "Library Commons",
+        category: "networking",
+        capacity: "   ",
+        startDatetime: "2026-04-25T12:00",
+        endDatetime: "2026-04-25T13:00",
+      },
+      {
+        userId: "user-admin",
+        role: "admin",
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.capacity).toBeUndefined();
+      expect(result.value.organizerId).toBe("user-admin");
+    }
+  });
 });

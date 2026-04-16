@@ -61,4 +61,31 @@ describe("EventDetailService", () => {
       expect(result.value.name).toBe("EventNotFoundError");
     }
   });
+
+  it("shows draft events to the organizer and to admins", async () => {
+    const service = CreateEventDetailService(
+      CreateInMemoryHomeContentRepository(),
+      CreateInMemoryUserRepository(),
+    );
+
+    const ownerResult = await service.getEventDetail(DEMO_DRAFT_EVENT_ID, {
+      userId: "user-staff",
+      role: "staff",
+    });
+    const adminResult = await service.getEventDetail(DEMO_DRAFT_EVENT_ID, {
+      userId: "user-admin",
+      role: "admin",
+    });
+
+    expect(ownerResult.ok).toBe(true);
+    expect(adminResult.ok).toBe(true);
+    if (ownerResult.ok) {
+      expect(ownerResult.value.canEdit).toBe(true);
+      expect(ownerResult.value.canCancel).toBe(true);
+    }
+    if (adminResult.ok) {
+      expect(adminResult.value.canEdit).toBe(true);
+      expect(adminResult.value.canCancel).toBe(true);
+    }
+  });
 });
