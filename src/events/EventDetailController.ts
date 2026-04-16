@@ -35,6 +35,7 @@ class EventDetailController implements IEventDetailController {
   async showEventDetail(req: Request, res: Response): Promise<void> {
     const browserSession = recordPageView(req.session);
     const actor = this.toActor(browserSession);
+    const eventId = typeof req.params.id === "string" ? req.params.id : "";
 
     if (!actor) {
       this.logger.warn("Blocked unauthenticated event detail request");
@@ -45,7 +46,7 @@ class EventDetailController implements IEventDetailController {
       return;
     }
 
-    const result = await this.service.getEventDetail(req.params.id ?? "", {
+    const result = await this.service.getEventDetail(eventId, {
       userId: actor.id,
       role: actor.role,
     });
@@ -59,20 +60,24 @@ class EventDetailController implements IEventDetailController {
       return;
     }
 
-    if (result.value.name === "EventNotFoundError") {
-      this.logger.warn(`Event detail not found for id ${req.params.id ?? ""}`);
-      res.status(404).render("partials/error", {
-        message: result.value.message,
+    if (result.ok === false) {
+      const error = result.value;
+
+      if (error.name === "EventNotFoundError") {
+        this.logger.warn(`Event detail not found for id ${eventId}`);
+        res.status(404).render("partials/error", {
+          message: error.message,
+          layout: false,
+        });
+        return;
+      }
+
+      this.logger.error(`Failed to load event detail: ${error.message}`);
+      res.status(500).render("partials/error", {
+        message: "Unable to load the event right now.",
         layout: false,
       });
-      return;
     }
-
-    this.logger.error(`Failed to load event detail: ${result.value.message}`);
-    res.status(500).render("partials/error", {
-      message: "Unable to load the event right now.",
-      layout: false,
-    });
   }
 }
 

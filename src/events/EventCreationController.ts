@@ -133,37 +133,41 @@ class EventCreationController implements IEventCreationController {
       return;
     }
 
-    if (result.value.name === "EventValidationError") {
-      const fieldErrors: EventCreationFieldErrors = result.value.field
-        ? { [result.value.field as keyof ICreateEventInput]: result.value.message }
-        : {};
-      this.logger.warn(`Rejected event creation form: ${result.value.message}`);
+    if (result.ok === false) {
+      const error = result.value;
+
+      if (error.name === "EventValidationError") {
+        const fieldErrors: EventCreationFieldErrors = error.field
+          ? { [error.field as keyof ICreateEventInput]: error.message }
+          : {};
+        this.logger.warn(`Rejected event creation form: ${error.message}`);
+        this.renderCreateForm(res, browserSession, {
+          fieldErrors,
+          formError: error.field && fieldErrors[error.field as keyof ICreateEventInput]
+            ? null
+            : error.message,
+          formValues,
+          statusCode: 400,
+        });
+        return;
+      }
+
+      if (error.name === "EventAuthorizationError") {
+        this.logger.warn(`Blocked unauthorized event creation for ${actor.id}`);
+        res.status(403).render("partials/error", {
+          message: error.message,
+          layout: false,
+        });
+        return;
+      }
+
+      this.logger.error(`Failed to create event: ${error.message}`);
       this.renderCreateForm(res, browserSession, {
-        fieldErrors,
-        formError: fieldErrors[result.value.field as keyof ICreateEventInput]
-          ? null
-          : result.value.message,
+        formError: "Unable to create the event right now.",
         formValues,
-        statusCode: 400,
+        statusCode: 500,
       });
-      return;
     }
-
-    if (result.value.name === "EventAuthorizationError") {
-      this.logger.warn(`Blocked unauthorized event creation for ${actor.id}`);
-      res.status(403).render("partials/error", {
-        message: result.value.message,
-        layout: false,
-      });
-      return;
-    }
-
-    this.logger.error(`Failed to create event: ${result.value.message}`);
-    this.renderCreateForm(res, browserSession, {
-      formError: "Unable to create the event right now.",
-      formValues,
-      statusCode: 500,
-    });
   }
 }
 
