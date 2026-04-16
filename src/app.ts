@@ -205,6 +205,17 @@ class ExpressApp implements IApp {
       }),
     );
 
+    this.app.put(
+      "/events/:id",
+      asyncHandler(async(req,res)=>{
+        if(!this.requireRole(req,res,["admin","staff"],"Only staff and admins may edit events.")){
+          return;
+        }
+        const title
+        await this.homeController.editEvent(req,res);
+      }),
+    );
+
     // ── Authenticated home page ──────────────────────────────────────
     // TODO: Replace this placeholder with your project's main page.
 
