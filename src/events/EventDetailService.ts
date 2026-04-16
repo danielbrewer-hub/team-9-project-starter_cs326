@@ -64,6 +64,7 @@ function toEventDetailView(
     organizerDisplayName,
     attendeeCount,
     ...buildEventPermissionFlags(event, actor),
+    // These will be filled in getEventDetail
   };
 }
 
@@ -164,9 +165,30 @@ class EventDetailService implements IEventDetailService {
       return Err(UnexpectedDependencyError("Unable to load the event organizer."));
     }
 
-    return Ok(
-      toEventDetailView(event, organizer.displayName, attendeeCountResult.value, actor),
-    );
+    // Find RSVP for this user/event
+    let rsvpStatus = null;
+    let isRsvpPending = false;
+    let isFull = false;
+    try {
+      const rsvpsResult = await this.contentRepository.listRsvpsForUser(actor.userId);
+      if (rsvpsResult.ok) {
+        const userRsvp = rsvpsResult.value.find(r => r.eventId === event.id);
+        rsvpStatus = userRsvp ? userRsvp.status : null;
+      }
+      const goingCountResult = await this.contentRepository.countGoingRsvpsForEvent(event.id);
+      if (goingCountResult.ok) {
+        isFull = typeof event.capacity === "number" && goingCountResult.value >= event.capacity;
+      }
+    } catch (e) {
+      // ignore RSVP errors for now
+    }
+
+    return Ok({
+      ...toEventDetailView(event, organizer.displayName, attendeeCountResult.value, actor),
+      rsvpStatus,
+      isRsvpPending,
+      isFull,
+    });
   }
 }
 
