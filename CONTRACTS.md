@@ -4,6 +4,12 @@ These contracts describe the public service interfaces that Features 1 and 2
 depend on during Sprint 1. All service methods return the shared
 `Result<T, E>` type from `src/lib/result.ts`.
 
+Controller boundary notes:
+- Controllers parse request bodies, params, and session state.
+- Services never read from the session directly.
+- `ActingUser` is derived from the authenticated session and passed into the
+  service explicitly.
+
 ## Shared Types
 
 ```ts
@@ -55,6 +61,11 @@ type EventDetailView = {
   canRsvp: boolean;
 };
 ```
+
+Form ownership notes:
+- `CreateEventInput` contains only form-owned fields.
+- `organizerId`, `status`, `createdAt`, and `updatedAt` are always server-owned
+  fields and must never come from the browser.
 
 ## Named Errors
 
