@@ -19,6 +19,17 @@
             <span class="w-2.5 h-2.5 rounded-full bg-gradient-to-b from-blue-400 to-blue-600"></span>
             Project Starter
           </a>
+          <% if (
+            session?.authenticatedUser &&
+            (session.authenticatedUser.role === "staff" || session.authenticatedUser.role === "admin")
+          ) { %>
+            <a
+              href="/events/new"
+              class="inline-flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white border border-slate-200 shadow-lg font-bold text-slate-900 no-underline"
+            >
+              Create Event
+            </a>
+          <% } %>
           <% if (session?.authenticatedUser && session.authenticatedUser.role === "user") { %>
             <a
               href="/rsvp"
