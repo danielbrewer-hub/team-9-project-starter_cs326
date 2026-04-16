@@ -19,6 +19,21 @@
     </div>
   <% } %>
 
+  <div class="mt-6 grid gap-3 md:grid-cols-3">
+    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      <strong class="block text-slate-800">Required</strong>
+      Title, description, location, category, start time, and end time.
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      <strong class="block text-slate-800">Capacity</strong>
+      Optional, but when present it must be a positive whole number.
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+      <strong class="block text-slate-800">Schedule</strong>
+      The end time must be later than the start time.
+    </div>
+  </div>
+
   <form method="post" action="/events" class="mt-8 space-y-8">
     <div class="grid gap-6 md:grid-cols-2">
       <label class="block">
