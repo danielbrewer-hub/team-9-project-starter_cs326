@@ -7,6 +7,12 @@ import type {
   IRsvpRecord,
   IUpdateEventInput,
 } from "./HomeRepository";
+import {
+  DEMO_DRAFT_EVENT_ID as draftEventId,
+  DEMO_DRAFT_EVENT_ORGANIZER_ID as draftOrganizerId,
+  DEMO_PUBLISHED_EVENT_ID as publishedEventId,
+  DEMO_PUBLISHED_EVENT_ORGANIZER_ID as publishedOrganizerId,
+} from "./HomeRepository";
 
 const events = new Map<string, IEventRecord>();
 const rsvps = new Map<string, IRsvpRecord>();
@@ -101,7 +107,7 @@ function seedRepository(): void {
   }
 
   createStoredEvent({
-    id: "event-1",
+    id: publishedEventId,
     title: "Sprint Planning Workshop",
     description: "Plan work for the next sprint and confirm ownership across the team.",
     location: "CS Building Room 204",
@@ -110,11 +116,11 @@ function seedRepository(): void {
     capacity: 12,
     startDatetime: "2026-04-18T14:00:00.000Z",
     endDatetime: "2026-04-18T15:30:00.000Z",
-    organizerId: "user-admin",
+    organizerId: publishedOrganizerId,
   });
 
   createStoredEvent({
-    id: "event-2",
+    id: draftEventId,
     title: "Project Demo Dry Run",
     description: "Run through the demo script and capture issues before presentation day.",
     location: "Online",
@@ -122,19 +128,19 @@ function seedRepository(): void {
     status: "draft",
     startDatetime: "2026-04-20T18:00:00.000Z",
     endDatetime: "2026-04-20T19:00:00.000Z",
-    organizerId: "user-staff",
+    organizerId: draftOrganizerId,
   });
 
   upsertStoredRsvp({
     id: "rsvp-1",
-    eventId: "event-1",
+    eventId: publishedEventId,
     userId: "user-admin",
     status: "going",
   });
 
   upsertStoredRsvp({
     id: "rsvp-2",
-    eventId: "event-1",
+    eventId: publishedEventId,
     userId: "user-staff",
     status: "waitlisted",
   });
