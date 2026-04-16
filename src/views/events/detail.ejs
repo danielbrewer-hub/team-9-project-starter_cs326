@@ -65,9 +65,43 @@
           <% } %>
 
           <% if (event.canRsvp) { %>
-            <div class="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
-              RSVP actions will appear here when the RSVP flow is implemented.
-            </div>
+              <form id="rsvp-toggle-form" method="post" action="/events/<%= event.id %>/rsvp/toggle" class="space-y-2">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button
+                  type="submit"
+                  class="w-full rounded-lg px-4 py-2 font-semibold text-white shadow transition focus:outline-none
+                    <%= event.rsvpStatus === 'going' ? 'bg-red-600 hover:bg-red-700' : event.rsvpStatus === 'waitlisted' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-600 hover:bg-blue-700' %>"
+                  <%= event.isRsvpPending ? 'disabled' : '' %>
+                >
+                  <% if (event.rsvpStatus === 'going') { %>
+                    Cancel RSVP
+                  <% } else if (event.rsvpStatus === 'waitlisted') { %>
+                    Leave Waitlist
+                  <% } else { %>
+                    <% if (event.isFull) { %>
+                      Join Waitlist
+                    <% } else { %>
+                      RSVP Going
+                    <% } %>
+                  <% } %>
+                </button>
+                <div class="text-xs text-slate-600">
+                  <% if (event.rsvpStatus === 'going') { %>
+                    You are attending this event.
+                  <% } else if (event.rsvpStatus === 'waitlisted') { %>
+                    You are on the waitlist.
+                  <% } else { %>
+                    <% if (event.isFull) { %>
+                      Event is full. You can join the waitlist.
+                    <% } else { %>
+                      You are not RSVPed.
+                    <% } %>
+                  <% } %>
+                </div>
+                <div class="text-xs text-slate-500">
+                  <strong>Attendance:</strong> <%= event.attendeeCount %> / <%= event.capacity || '∞' %>
+                </div>
+              </form>
           <% } %>
 
           <% if (!event.canEdit && !event.canCancel && !event.canRsvp) { %>
