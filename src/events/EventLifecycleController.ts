@@ -10,8 +10,8 @@ import type { IEventLifecycleService } from "./EventLifecycleService";
 import type { EventLifecycleError } from "./EventLifecycleErrors";
 
 export interface IEventLifecycleController {
-  publishEvent(req: Request<{ id: string }>, res: Response): Promise<void>;
-  cancelEvent(req: Request<{ id: string }>, res: Response): Promise<void>;
+  publishEvent(req: Request, res: Response): Promise<void>;
+  cancelEvent(req: Request, res: Response): Promise<void>;
 }
 
 class EventLifecycleController implements IEventLifecycleController {
