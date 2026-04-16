@@ -7,6 +7,10 @@ import type {
   IRsvpRecord,
   IUpdateEventInput,
 } from "./HomeRepository";
+import {
+  DEMO_DRAFT_EVENT_ID as draftEventId,
+  DEMO_PUBLISHED_EVENT_ID as publishedEventId,
+} from "./HomeRepository";
 
 const events = new Map<string, IEventRecord>();
 const rsvps = new Map<string, IRsvpRecord>();
@@ -101,7 +105,7 @@ function seedRepository(): void {
   }
 
   createStoredEvent({
-    id: "event-1",
+    id: publishedEventId,
     title: "Sprint Planning Workshop",
     description: "Plan work for the next sprint and confirm ownership across the team.",
     location: "CS Building Room 204",
@@ -114,7 +118,7 @@ function seedRepository(): void {
   });
 
   createStoredEvent({
-    id: "event-2",
+    id: draftEventId,
     title: "Project Demo Dry Run",
     description: "Run through the demo script and capture issues before presentation day.",
     location: "Online",
@@ -127,14 +131,14 @@ function seedRepository(): void {
 
   upsertStoredRsvp({
     id: "rsvp-1",
-    eventId: "event-1",
+    eventId: publishedEventId,
     userId: "user-admin",
     status: "going",
   });
 
   upsertStoredRsvp({
     id: "rsvp-2",
-    eventId: "event-1",
+    eventId: publishedEventId,
     userId: "user-staff",
     status: "waitlisted",
   });
