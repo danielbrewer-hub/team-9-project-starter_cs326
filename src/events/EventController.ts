@@ -1,5 +1,6 @@
+import type { EventService, InvalidSearchError } from './EventService'
 import type { Request, Response } from 'express'
-import type { EventService } from './EventService'
+
 
 export interface IEventController {
   list(req: Request, res: Response): Promise<void>
@@ -40,7 +41,7 @@ class EventController implements IEventController {
         searchQuery: q,
         category: '',
         timeframe: 'all',
-        error: result.value.message,
+        error: (result.value as InvalidSearchError).message,
       })
       return
     }
