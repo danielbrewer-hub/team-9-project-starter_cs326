@@ -3,6 +3,7 @@ import express, { Request, RequestHandler, Response } from "express";
 import session from "express-session";
 import Layouts from "express-ejs-layouts";
 import { IAuthController } from "./auth/AuthController";
+import type { IEventCreationController } from "./events/EventCreationController";
 import type { IHomeController } from "./home/HomeController";
 import type { IRsvpDashboardController } from "./home/RsvpDashboardController";
 import {
@@ -36,6 +37,7 @@ class ExpressApp implements IApp {
 
   constructor(
     private readonly authController: IAuthController,
+    private readonly eventCreationController: IEventCreationController,
     private readonly homeController: IHomeController,
     private readonly rsvpDashboardController: IRsvpDashboardController,
     private readonly logger: ILoggingService,
@@ -260,9 +262,16 @@ class ExpressApp implements IApp {
 
 export function CreateApp(
   authController: IAuthController,
+  eventCreationController: IEventCreationController,
   homeController: IHomeController,
   rsvpDashboardController: IRsvpDashboardController,
   logger: ILoggingService,
 ): IApp {
-  return new ExpressApp(authController, homeController, rsvpDashboardController, logger);
+  return new ExpressApp(
+    authController,
+    eventCreationController,
+    homeController,
+    rsvpDashboardController,
+    logger,
+  );
 }
