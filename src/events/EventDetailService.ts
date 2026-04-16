@@ -22,23 +22,25 @@ function normalizeEventId(eventId: string): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function canManageEvent(event: IEventRecord, actor: IActingUser): boolean {
+  return actor.role === "admin" || event.organizerId === actor.userId;
+}
+
 function canViewEventDetail(event: IEventRecord, actor: IActingUser): boolean {
   if (event.status !== "draft") {
     return true;
   }
 
-  return actor.role === "admin" || event.organizerId === actor.userId;
+  return canManageEvent(event, actor);
 }
 
 function buildEventPermissionFlags(
   event: IEventRecord,
   actor: IActingUser,
 ): EventPermissionFlags {
-  const canManage = actor.role === "admin" || event.organizerId === actor.userId;
-
   return {
-    canEdit: canManage,
-    canCancel: canManage,
+    canEdit: canManageEvent(event, actor),
+    canCancel: canManageEvent(event, actor),
     canRsvp: actor.role === "user" && event.status === "published",
   };
 }
@@ -112,6 +114,7 @@ export function CreateEventDetailService(
 
 export {
   buildEventPermissionFlags,
+  canManageEvent,
   canViewEventDetail,
   normalizeEventId,
   toEventDetailView,
