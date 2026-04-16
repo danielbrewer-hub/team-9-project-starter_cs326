@@ -79,6 +79,12 @@ function listStoredRsvpsForUser(userId: string): IRsvpRecord[] {
     .map(cloneRsvp);
 }
 
+function countStoredGoingRsvpsForEvent(eventId: string): number {
+  return Array.from(rsvps.values()).filter(
+    (rsvp) => rsvp.eventId === eventId && rsvp.status === "going",
+  ).length;
+}
+
 function upsertStoredRsvp(input: ICreateRsvpInput, now: Date = new Date()): IRsvpRecord {
   const existing = Array.from(rsvps.values()).find(
     (rsvp) => rsvp.eventId === input.eventId && rsvp.userId === input.userId,
@@ -174,6 +180,10 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
     return Ok(listStoredRsvpsForEvent(eventId));
   }
 
+  async countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>> {
+    return Ok(countStoredGoingRsvpsForEvent(eventId));
+  }
+
   async listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>> {
     return Ok(listStoredRsvpsForUser(userId));
   }
@@ -188,6 +198,7 @@ export function CreateInMemoryHomeContentRepository(): IHomeContentRepository {
 }
 
 export {
+  countStoredGoingRsvpsForEvent,
   createStoredEvent,
   findStoredEventById,
   listStoredEvents,
