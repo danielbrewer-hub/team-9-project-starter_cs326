@@ -1,0 +1,142 @@
+<section class="max-w-4xl mx-auto p-6 border border-slate-200 rounded-3xl bg-white shadow-lg">
+  <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+    <div>
+      <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Feature 1</p>
+      <h1 class="text-3xl font-bold text-slate-900 mt-1">Create Event</h1>
+      <p class="text-slate-500 mt-3 max-w-2xl">
+        Organizers and admins can draft an event here. New events always start in
+        draft status, and the organizer is taken from the signed-in session.
+      </p>
+    </div>
+    <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      Drafts stay hidden from members until a later publish flow makes them public.
+    </div>
+  </div>
+
+  <% if (formError) { %>
+    <div class="mt-5">
+      <%- include("../partials/error", { message: formError }) %>
+    </div>
+  <% } %>
+
+  <form method="post" action="/events" class="mt-8 space-y-8">
+    <div class="grid gap-6 md:grid-cols-2">
+      <label class="block">
+        <span class="block text-sm font-semibold text-slate-700">Title</span>
+        <input
+          type="text"
+          name="title"
+          value="<%= formValues?.title ?? '' %>"
+          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+        />
+        <% if (fieldErrors?.title) { %>
+          <p class="mt-2 text-sm text-red-600"><%= fieldErrors.title %></p>
+        <% } %>
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-semibold text-slate-700">Category</span>
+        <input
+          type="text"
+          name="category"
+          value="<%= formValues?.category ?? '' %>"
+          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+        />
+        <% if (fieldErrors?.category) { %>
+          <p class="mt-2 text-sm text-red-600"><%= fieldErrors.category %></p>
+        <% } %>
+      </label>
+    </div>
+
+    <label class="block">
+      <span class="block text-sm font-semibold text-slate-700">Description</span>
+      <textarea
+        name="description"
+        rows="5"
+        class="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+      ><%= formValues?.description ?? '' %></textarea>
+      <% if (fieldErrors?.description) { %>
+        <p class="mt-2 text-sm text-red-600"><%= fieldErrors.description %></p>
+      <% } %>
+    </label>
+
+    <div class="grid gap-6 md:grid-cols-2">
+      <label class="block">
+        <span class="block text-sm font-semibold text-slate-700">Location</span>
+        <input
+          type="text"
+          name="location"
+          value="<%= formValues?.location ?? '' %>"
+          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+        />
+        <% if (fieldErrors?.location) { %>
+          <p class="mt-2 text-sm text-red-600"><%= fieldErrors.location %></p>
+        <% } %>
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-semibold text-slate-700">Capacity</span>
+        <input
+          type="number"
+          min="1"
+          step="1"
+          name="capacity"
+          value="<%= formValues?.capacity ?? '' %>"
+          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+        />
+        <p class="mt-2 text-sm text-slate-500">Leave blank for no capacity limit.</p>
+        <% if (fieldErrors?.capacity) { %>
+          <p class="mt-2 text-sm text-red-600"><%= fieldErrors.capacity %></p>
+        <% } %>
+      </label>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2">
+      <label class="block">
+        <span class="block text-sm font-semibold text-slate-700">Start Time</span>
+        <input
+          type="datetime-local"
+          name="startDatetime"
+          value="<%= formValues?.startDatetime ?? '' %>"
+          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+        />
+        <% if (fieldErrors?.startDatetime) { %>
+          <p class="mt-2 text-sm text-red-600"><%= fieldErrors.startDatetime %></p>
+        <% } %>
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-semibold text-slate-700">End Time</span>
+        <input
+          type="datetime-local"
+          name="endDatetime"
+          value="<%= formValues?.endDatetime ?? '' %>"
+          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+        />
+        <% if (fieldErrors?.endDatetime) { %>
+          <p class="mt-2 text-sm text-red-600"><%= fieldErrors.endDatetime %></p>
+        <% } %>
+      </label>
+    </div>
+
+    <div class="flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <p class="text-sm text-slate-500">
+        Logged in as <strong class="text-slate-700"><%= session?.authenticatedUser?.displayName %></strong>.
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a
+          href="/home"
+          class="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 no-underline hover:bg-slate-100"
+        >
+          Cancel
+        </a>
+        <button
+          type="submit"
+          class="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white border border-slate-900 cursor-pointer hover:bg-slate-800"
+        >
+          Save Draft Event
+        </button>
+      </div>
+    </div>
+  </form>
+</section>
