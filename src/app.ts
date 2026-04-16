@@ -20,6 +20,8 @@ import {
   touchAppSession,
 } from "./session/AppSession";
 import { ILoggingService } from "./service/LoggingService";
+import { IEventLifecycleController } from "./events/EventLifecycleController";
+import { IEventLifecycleService } from "./events/EventLifecycleService";
 
 type AsyncRequestHandler = RequestHandler;
 
@@ -43,6 +45,7 @@ class ExpressApp implements IApp {
     private readonly homeController: IHomeController,
     private readonly rsvpDashboardController: IRsvpDashboardController,
     private readonly logger: ILoggingService,
+    private readonly eventLifecycleController:IEventLifecycleController,
   ) {
     this.app = express();
     this.registerMiddleware();
@@ -222,6 +225,7 @@ class ExpressApp implements IApp {
 this.app.put(
   "/events/:id/cancel",
   asyncHandler(async (req, res) => {
+    
     if (!this.requireRole(req, res, ["admin", "staff"], "Only staff and admins may cancel events.")) {
       return;
     }
@@ -322,6 +326,7 @@ export function CreateApp(
   homeController: IHomeController,
   rsvpDashboardController: IRsvpDashboardController,
   logger: ILoggingService,
+  eventLifecycleController:IEventLifecycleController,
 ): IApp {
   return new ExpressApp(
     authController,
@@ -330,5 +335,6 @@ export function CreateApp(
     homeController,
     rsvpDashboardController,
     logger,
+    eventLifecycleController,
   );
 }
