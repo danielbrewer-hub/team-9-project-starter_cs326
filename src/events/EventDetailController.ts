@@ -44,14 +44,30 @@ class EventDetailController implements IEventDetailController {
     }
 
     try {
-      // Placeholder for service call:
-      // const result = await this.service.toggleRsvp(eventId, actor);
-      // if (!result.ok) throw result.value;
+      const result = await this.service.toggleRsvp(eventId, { userId: actor.id, role: actor.role });
+      if (!result.ok) throw result.value;
 
       this.logger.info(`POST /events/${eventId}/rsvp/toggle by ${actor.id}`);
-      res.redirect(`/events/${eventId}`);
+      // If HTMX, render only the RSVP action area partial
+      if (req.get("HX-Request") === "true") {
+        res.render("events/detail", {
+          session: browserSession,
+          event: result.value,
+          layout: false,
+        }, (err, html) => {
+          if (err) {
+            this.logger.error(`HTMX RSVP partial render error: ${err}`);
+            res.status(500).send("Unable to update RSVP.");
+          } else {
+            // Extract only the RSVP action area div
+            const match = html.match(/<div id=\"rsvp-action-area\"[\s\S]*?<\/div>/);
+            res.send(match ? match[0] : "");
+          }
+        });
+      } else {
+        res.redirect(`/events/${eventId}`);
+      }
     } catch (error: any) {
-      // Example error handling for common RSVP toggle errors
       if (error?.name === "EventNotFoundError") {
         this.logger.warn(`Event not found for RSVP toggle: ${eventId}`);
         res.status(404).render("partials/error", {
