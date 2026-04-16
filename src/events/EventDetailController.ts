@@ -8,8 +8,10 @@ import {
 import type { ILoggingService } from "../service/LoggingService";
 import type { IEventDetailService } from "./EventDetailService";
 
+
 export interface IEventDetailController {
   showEventDetail(req: Request, res: Response): Promise<void>;
+  toggleRsvp(req: Request, res: Response): Promise<void>;
 }
 
 class EventDetailController implements IEventDetailController {
@@ -17,6 +19,25 @@ class EventDetailController implements IEventDetailController {
     private readonly service: IEventDetailService,
     private readonly logger: ILoggingService,
   ) {}
+  async toggleRsvp(req: Request, res: Response): Promise<void> {
+    const browserSession = recordPageView(req.session);
+    const actor = this.toActor(browserSession);
+    const eventId = typeof req.params.id === "string" ? req.params.id : "";
+
+    if (!actor) {
+      this.logger.warn("Blocked unauthenticated RSVP toggle request");
+      res.status(401).render("partials/error", {
+        message: AuthenticationRequired("Please log in to continue.").message,
+        layout: false,
+      });
+      return;
+    }
+
+    // Service logic to be implemented in the next step
+    // Placeholder: just redirect back to event detail for now
+    this.logger.info(`POST /events/${eventId}/rsvp/toggle by ${actor.id}`);
+    res.redirect(`/events/${eventId}`);
+  }
 
   private toActor(session: IAppBrowserSession): IAuthenticatedUser | null {
     const authenticatedUser = session.authenticatedUser;
