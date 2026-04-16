@@ -180,6 +180,10 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
     return Ok(listStoredRsvpsForEvent(eventId));
   }
 
+  async countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>> {
+    return Ok(countStoredGoingRsvpsForEvent(eventId));
+  }
+
   async listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>> {
     return Ok(listStoredRsvpsForUser(userId));
   }
