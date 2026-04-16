@@ -57,12 +57,44 @@
       <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
         <h2 class="text-xl font-semibold text-slate-900">Action Area</h2>
         <div class="mt-4 space-y-3 text-sm text-slate-600">
-          <% if (event.canEdit || event.canCancel) { %>
-            <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-              Organizer controls for editing and cancelling are reserved for
-              later Sprint features.
-            </div>
+          <% if (event.canEdit) { %>
+            <%/* Feature 3 — GET /events/:id/edit renders the edit-form.ejs partial */%>
+            <a
+              href="/events/<%= event.id %>/edit"
+              class="block w-full rounded-2xl border border-slate-200 bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-slate-700"
+            >
+              Edit Event
+            </a>
           <% } %>
+
+          <% if (event.canEdit && event.status === "draft") { %>
+            <%/* Feature 5 — POST /events/:id/publish transitions draft → published */%>
+            <form action="/events/<%= event.id %>/publish" method="POST">
+              <button
+                type="submit"
+                class="w-full rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-100"
+              >
+                Publish Event
+              </button>
+            </form>
+          <% } %>
+
+          <% if (event.canCancel) { %>
+            <%/* Feature 5 — POST /events/:id/cancel transitions draft|published → cancelled */%>
+            <form
+              action="/events/<%= event.id %>/cancel"
+              method="POST"
+              onsubmit="return confirm('Are you sure you want to cancel this event? This cannot be undone.');"
+            >
+              <button
+                type="submit"
+                class="w-full rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100"
+              >
+                Cancel Event
+              </button>
+            </form>
+          <% } %>
+
 
           <% if (event.canRsvp) { %>
             <div class="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
