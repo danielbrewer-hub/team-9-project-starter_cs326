@@ -6,7 +6,12 @@ import type {
 } from "./HomeRepository";
 
 export type HomeServiceError = {
-  name: "UnexpectedDependencyError" | "NotFoundError" | "ValidationError";
+  name:
+    | "UnexpectedDependencyError"
+    | "NotFoundError"
+    | "ValidationError"
+    | "ForbiddenError"
+    | "InvalidTransitionError";
   message: string;
 };
 
@@ -34,29 +39,22 @@ export interface IEventUpdateFields {
 }
 
 export interface IHomeService {
-  getHomePageData(
-    actor: IAuthenticatedUser,
-  ): Promise<Result<IHomePageData, HomeServiceError>>;
-
-   updateEvent(
-    actor: IAuthenticatedUser,
-    eventId: string,
-    fields: IEventUpdateFields,
-  ): Promise<Result<IHomePageData["recentEvents"][number], HomeServiceError>>;
+  getHomePageData(actor: IAuthenticatedUser): Promise<Result<IHomePageData, HomeServiceError>>;
+  publishEvent(actor: IAuthenticatedUser, eventId: string): Promise<Result<IEventRecord, HomeServiceError>>;
+  cancelEvent(actor: IAuthenticatedUser, eventId: string): Promise<Result<IEventRecord, HomeServiceError>>;
 }
 
 function UnexpectedDependencyError(message: string): HomeServiceError {
   return { name: "UnexpectedDependencyError", message };
 }
 
-function NotFoundError(message: string): HomeServiceError {
-  return { name: "NotFoundError", message };
+function ForbiddenError(message: string): HomeServiceError {
+  return { name: "ForbiddenError", message };
 }
 
-function ValidationError(message: string): HomeServiceError {
-  return { name: "ValidationError", message };
+function InvalidTransitionError(message: string): HomeServiceError {
+  return { name: "InvalidTransitionError", message };
 }
-
 
 class HomeService implements IHomeService {
   constructor(private readonly contentRepository: IHomeContentRepository) {}
@@ -156,6 +154,79 @@ class HomeService implements IHomeService {
       ],
       recentEvents: recentEvents.slice(0, 5),
     });
+  }
+  async publishEvent(
+    actor: IAuthenticatedUser,
+    eventId: string,
+  ): Promise<Result<IEventRecord, HomeServiceError>> {
+    const findResult = await this.contentRepository.findEventById(eventId);
+    if (findResult.ok === false) {
+      return Err(UnexpectedDependencyError(findResult.value.message));
+    }
+    if (findResult.value === null) {
+      return Err(NotFoundError(`Event ${eventId} not found.`));
+    }
+
+    const event = findResult.value;
+
+    if (actor.role !== "admin" && event.organizerId !== actor.id) {
+      return Err(ForbiddenError("Only the organizer or an admin can publish this event."));
+    }
+
+    if (event.status !== "draft") {
+      return Err(InvalidTransitionError(
+        `Cannot publish an event with status "${event.status}". Only draft events can be published.`,
+      ));
+    }
+
+    const updateResult = await this.contentRepository.updateEvent(eventId, {
+      status: "published",
+    });
+    if (updateResult.ok === false) {
+      return Err(UnexpectedDependencyError(updateResult.value.message));
+    }
+    if (updateResult.value === null) {
+      return Err(NotFoundError(`Event ${eventId} disappeared during update.`));
+    }
+
+    return Ok(updateResult.value);
+  }
+
+  async cancelEvent(
+    actor: IAuthenticatedUser,
+    eventId: string,
+  ): Promise<Result<IEventRecord, HomeServiceError>> {
+    const findResult = await this.contentRepository.findEventById(eventId);
+    if (findResult.ok === false) {
+      return Err(UnexpectedDependencyError(findResult.value.message));
+    }
+    if (findResult.value === null) {
+      return Err(NotFoundError(`Event ${eventId} not found.`));
+    }
+
+    const event = findResult.value;
+
+    if (actor.role !== "admin" && event.organizerId !== actor.id) {
+      return Err(ForbiddenError("Only the organizer or an admin can cancel this event."));
+    }
+
+    if (event.status !== "published") {
+      return Err(InvalidTransitionError(
+        `Cannot cancel an event with status "${event.status}". Only published events can be cancelled.`,
+      ));
+    }
+
+    const updateResult = await this.contentRepository.updateEvent(eventId, {
+      status: "cancelled",
+    });
+    if (updateResult.ok === false) {
+      return Err(UnexpectedDependencyError(updateResult.value.message));
+    }
+    if (updateResult.value === null) {
+      return Err(NotFoundError(`Event ${eventId} disappeared during update.`));
+    }
+
+    return Ok(updateResult.value);
   }
 }
 
