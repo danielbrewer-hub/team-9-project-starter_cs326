@@ -5,6 +5,8 @@ import { CreateInMemoryUserRepository } from "./auth/InMemoryUserRepository";
 import { CreatePasswordHasher } from "./auth/PasswordHasher";
 import { CreateApp } from "./app";
 import { CreateHomeController } from "./home/HomeController";
+import { CreateAttendeeListController } from "./home/AttendeeListController";
+import { CreateAttendeeListService } from "./home/AttendeeListService";
 import { CreateInMemoryHomeContentRepository } from "./home/InMemoryHomeRepository";
 import { CreateHomeService } from "./home/HomeService";
 import { CreateRsvpDashboardController } from "./home/RsvpDashboardController";
@@ -27,6 +29,14 @@ export function createComposedApp(logger?: ILoggingService): IApp {
   const homeController = CreateHomeController(homeService, resolvedLogger);
   const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
   const rsvpDashboardController = CreateRsvpDashboardController(rsvpDashboardService, resolvedLogger);
+  const attendeeListService = CreateAttendeeListService(homeContentRepository, authUsers);
+  const attendeeListController = CreateAttendeeListController(attendeeListService, resolvedLogger);
 
-  return CreateApp(authController, homeController, rsvpDashboardController, resolvedLogger);
+  return CreateApp(
+    authController,
+    homeController,
+    rsvpDashboardController,
+    attendeeListController,
+    resolvedLogger,
+  );
 }
