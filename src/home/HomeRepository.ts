@@ -3,6 +3,9 @@ import type { Result } from "../lib/result";
 export type EventStatus = "draft" | "published" | "cancelled" | "past";
 export type RsvpStatus = "going" | "waitlisted" | "cancelled";
 
+export const DEMO_PUBLISHED_EVENT_ID = "event-1";
+export const DEMO_DRAFT_EVENT_ID = "event-2";
+
 export interface IEventRecord {
   id: string;
   title: string;
