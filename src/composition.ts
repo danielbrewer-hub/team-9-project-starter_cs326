@@ -9,6 +9,8 @@ import { CreateInMemoryHomeContentRepository } from "./home/InMemoryHomeReposito
 import { CreateHomeService } from "./home/HomeService";
 import { CreateRsvpDashboardController } from "./home/RsvpDashboardController";
 import { CreateRsvpDashboardService } from "./home/RsvpDashboardService";
+import { CreateEventService } from "./events/EventService";
+import { CreateEventController } from "./events/EventController";
 import type { IApp } from "./contracts";
 import { CreateLoggingService } from "./service/LoggingService";
 import type { ILoggingService } from "./service/LoggingService";
@@ -22,11 +24,17 @@ export function createComposedApp(logger?: ILoggingService): IApp {
   const authService = CreateAuthService(authUsers, passwordHasher);
   const adminUserService = CreateAdminUserService(authUsers, passwordHasher);
   const authController = CreateAuthController(authService, adminUserService, resolvedLogger);
+
+  // Home & RSVP wiring
   const homeContentRepository = CreateInMemoryHomeContentRepository();
   const homeService = CreateHomeService(homeContentRepository);
   const homeController = CreateHomeController(homeService, resolvedLogger);
   const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
   const rsvpDashboardController = CreateRsvpDashboardController(rsvpDashboardService, resolvedLogger);
 
-  return CreateApp(authController, homeController, rsvpDashboardController, resolvedLogger);
+  // Events wiring
+  const eventService = CreateEventService(homeContentRepository);
+  const eventController = CreateEventController(eventService);
+
+  return CreateApp(authController, homeController, rsvpDashboardController, eventController, resolvedLogger);
 }
