@@ -170,10 +170,134 @@ In UserRepository.ts:
 
 
 # Feature 3 (Dan)
+Routes:
+GET /events/:id/edit -> eventEditController.showEditEventForm()
+POST /events/:id/edit -> eventEditController.updateEventFromForm()
+
+Interfaces:
+IEditEventInput: Form payload used by the edit flow:
+export interface IEditEventInput {
+title: string;
+description: string;
+location: string;
+category: string;
+capacity?: string;
+startDatetime: string;
+endDatetime: string;
+}
+HomeRepository IUpdateEventInput: Repository payload used after validation to store event updates:
+export interface IUpdateEventInput {
+title: string;
+description: string;
+location: string;
+category: string;
+capacity?: number;
+startDatetime: string;
+endDatetime: string;
+}
+IEventEditController: The controller for the event edit flow:
+export interface IEventEditController {
+showEditEventForm(req: Request, res: Response): Promise<void>;
+updateEventFromForm(req: Request, res: Response): Promise<void>;
+}
+IEventEditService: The service that loads the event for editing and applies validated updates:
+export interface IEventEditService {
+getEventForEdit(
+eventId: string,
+actor: IActingUser,
+): Promise<Result<IEventRecord, EventEditError>>;
+updateEvent(
+eventId: string,
+input: IEditEventInput,
+actor: IActingUser,
+): Promise<Result<IEventRecord, EventEditError>>;
+}
+
+Error Type:
+EventEditError: Union type for edit failures (reuses EventValidationError, EventAuthorizationError, and EventUnexpectedDependencyError from Feature 1, and EventNotFoundError from Feature 2):
+export type EventEditError =
+| EventValidationError
+| EventAuthorizationError
+| EventNotFoundError
+| EventUnexpectedDependencyError;
+
+Factory Helpers:
+For EventEditController:
+export function CreateEventEditController(
+service: IEventEditService,
+logger: ILoggingService,
+): IEventEditController {
+return new EventEditController(service, logger);
+}
+For EventEditService:
+export function CreateEventEditService(
+contentRepository: IHomeContentRepository,
+): IEventEditService {
+return new EventEditService(contentRepository);
+}
+
+Other Helpers:
+In HomeRepository.ts:
+updateEvent(eventId: string, input: IUpdateEventInput): Promise<Result<IEventRecord, Error>>;
+Applies the validated field updates to an existing event record and returns the updated record
 
 # Feature 4 (Isik)
 
 # Feature 5 (Dan)
+Routes:
+POST /events/:id/publish -> eventLifecycleController.publishEvent()
+POST /events/:id/cancel -> eventLifecycleController.cancelEvent()
+
+Interfaces:
+IEventLifecycleController: The controller for event publication and cancellation:
+export interface IEventLifecycleController {
+publishEvent(req: Request, res: Response): Promise<void>;
+cancelEvent(req: Request, res: Response): Promise<void>;
+}
+IEventLifecycleService: The service that validates status transitions and applies them:
+export interface IEventLifecycleService {
+publishEvent(
+eventId: string,
+actor: IActingUser,
+): Promise<Result<IEventRecord, EventLifecycleError>>;
+cancelEvent(
+eventId: string,
+actor: IActingUser,
+): Promise<Result<IEventRecord, EventLifecycleError>>;
+}
+
+Error Type:
+EventStatusTransitionError: Returned when the event is not in a valid status for the requested transition (e.g. publishing a cancelled event, cancelling a completed event):
+export type EventStatusTransitionError = {
+name: "EventStatusTransitionError";
+message: string;
+};
+EventLifecycleError: Union type for publication and cancellation failures (reuses EventAuthorizationError and EventUnexpectedDependencyError from Feature 1, and EventNotFoundError from Feature 2):
+export type EventLifecycleError =
+| EventNotFoundError
+| EventAuthorizationError
+| EventStatusTransitionError
+| EventUnexpectedDependencyError;
+
+Factory Helpers:
+For EventLifecycleController:
+export function CreateEventLifecycleController(
+service: IEventLifecycleService,
+logger: ILoggingService,
+): IEventLifecycleController {
+return new EventLifecycleController(service, logger);
+}
+For EventLifecycleService:
+export function CreateEventLifecycleService(
+contentRepository: IHomeContentRepository,
+): IEventLifecycleService {
+return new EventLifecycleService(contentRepository);
+}
+
+Other Helpers:
+In HomeRepository.ts:
+updateEventStatus(eventId: string, status: EventStatus): Promise<Result<IEventRecord, Error>>;
+Transitions the event to the given status and returns the updated record
 
 # Feature 6 (Aditya)
 
