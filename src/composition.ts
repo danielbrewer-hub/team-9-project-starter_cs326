@@ -43,8 +43,8 @@ export function createComposedApp(logger?: ILoggingService): IApp {
   const homeController = CreateHomeController(homeService, resolvedLogger);
   const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
   const rsvpDashboardController = CreateRsvpDashboardController(rsvpDashboardService, resolvedLogger);
-  const eventLifecycleService = CreateEventLifecycleService(homeContentRepository,userRepository);
-const eventLifecycleController = CreateEventLifecycleController(eventLifecycleService,logger);
+  const eventLifecycleService = CreateEventLifecycleService(homeContentRepository,authUsers);
+  const eventLifecycleController = CreateEventLifecycleController(eventLifecycleService,resolvedLogger);
 
   return CreateApp(
     authController,
@@ -53,5 +53,6 @@ const eventLifecycleController = CreateEventLifecycleController(eventLifecycleSe
     homeController,
     rsvpDashboardController,
     resolvedLogger,
+    eventLifecycleController,
   );
 }
