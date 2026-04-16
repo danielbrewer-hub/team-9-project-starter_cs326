@@ -4,6 +4,7 @@ import session from "express-session";
 import Layouts from "express-ejs-layouts";
 import { IAuthController } from "./auth/AuthController";
 import type { IEventCreationController } from "./events/EventCreationController";
+import type { IEventDetailController } from "./events/EventDetailController";
 import type { IHomeController } from "./home/HomeController";
 import type { IRsvpDashboardController } from "./home/RsvpDashboardController";
 import {
@@ -38,6 +39,7 @@ class ExpressApp implements IApp {
   constructor(
     private readonly authController: IAuthController,
     private readonly eventCreationController: IEventCreationController,
+    private readonly eventDetailController: IEventDetailController,
     private readonly homeController: IHomeController,
     private readonly rsvpDashboardController: IRsvpDashboardController,
     private readonly logger: ILoggingService,
@@ -244,6 +246,17 @@ class ExpressApp implements IApp {
     );
 
     this.app.get(
+      "/events/:id",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.eventDetailController.showEventDetail(req, res);
+      }),
+    );
+
+    this.app.get(
       "/rsvp",
       asyncHandler(async (req, res) => {
         if (!this.requireAuthenticated(req, res)) {
@@ -285,6 +298,7 @@ class ExpressApp implements IApp {
 export function CreateApp(
   authController: IAuthController,
   eventCreationController: IEventCreationController,
+  eventDetailController: IEventDetailController,
   homeController: IHomeController,
   rsvpDashboardController: IRsvpDashboardController,
   logger: ILoggingService,
@@ -292,6 +306,7 @@ export function CreateApp(
   return new ExpressApp(
     authController,
     eventCreationController,
+    eventDetailController,
     homeController,
     rsvpDashboardController,
     logger,

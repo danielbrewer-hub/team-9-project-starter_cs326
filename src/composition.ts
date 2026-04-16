@@ -6,6 +6,8 @@ import { CreatePasswordHasher } from "./auth/PasswordHasher";
 import { CreateApp } from "./app";
 import { CreateEventCreationController } from "./events/EventCreationController";
 import { CreateEventCreationService } from "./events/EventCreationService";
+import { CreateEventDetailController } from "./events/EventDetailController";
+import { CreateEventDetailService } from "./events/EventDetailService";
 import { CreateHomeController } from "./home/HomeController";
 import { CreateInMemoryHomeContentRepository } from "./home/InMemoryHomeRepository";
 import { CreateHomeService } from "./home/HomeService";
@@ -30,6 +32,11 @@ export function createComposedApp(logger?: ILoggingService): IApp {
     eventCreationService,
     resolvedLogger,
   );
+  const eventDetailService = CreateEventDetailService(homeContentRepository, authUsers);
+  const eventDetailController = CreateEventDetailController(
+    eventDetailService,
+    resolvedLogger,
+  );
   const homeService = CreateHomeService(homeContentRepository);
   const homeController = CreateHomeController(homeService, resolvedLogger);
   const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
@@ -38,6 +45,7 @@ export function createComposedApp(logger?: ILoggingService): IApp {
   return CreateApp(
     authController,
     eventCreationController,
+    eventDetailController,
     homeController,
     rsvpDashboardController,
     resolvedLogger,
