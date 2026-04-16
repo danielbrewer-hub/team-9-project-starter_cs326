@@ -241,6 +241,27 @@ class ExpressApp implements IApp {
       }),
     );
 
+        
+    this.app.put(
+      "/events/:id/publish",
+      asyncHandler(async (req, res) => {
+        if (!this.requireRole(req, res, ["admin", "staff"], "Only staff and admins may publish events.")) {
+          return;
+        }
+        await this.homeController.publishEvent(req, res);
+      }),
+    );
+
+    this.app.put(
+      "/events/:id/cancel",
+      asyncHandler(async (req, res) => {
+        if (!this.requireRole(req, res, ["admin", "staff"], "Only staff and admins may cancel events.")) {
+          return;
+        }
+        await this.homeController.cancelEvent(req, res);
+      }),
+    );
+
     // ── Error handler ────────────────────────────────────────────────
 
     this.app.use((err: unknown, _req: Request, res: Response, _next: (value?: unknown) => void) => {
