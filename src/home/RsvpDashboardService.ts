@@ -16,6 +16,7 @@ export interface IRsvpDashboardItem {
   timeLabel: string;
   rsvpStatus: string;
   eventStatus: string;
+  waitlistPosition: number | null;
 }
 
 export interface IRsvpDashboardData {
@@ -78,7 +79,23 @@ function normalizeEventStatus(event: IEventRecord): string {
   }
 }
 
-function toDashboardItem(rsvp: IRsvpRecord, event: IEventRecord): IRsvpDashboardItem {
+function getWaitlistPosition(rsvp: IRsvpRecord, eventRsvps: IRsvpRecord[]): number | null {
+  if (rsvp.status !== "waitlisted") {
+    return null;
+  }
+
+  const waitlistedRsvps = eventRsvps
+    .filter((entry) => entry.status === "waitlisted")
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+  const index = waitlistedRsvps.findIndex((entry) => entry.id === rsvp.id);
+  return index >= 0 ? index + 1 : null;
+}
+
+function toDashboardItem(
+  rsvp: IRsvpRecord,
+  event: IEventRecord,
+  eventRsvps: IRsvpRecord[],
+): IRsvpDashboardItem {
   return {
     id: rsvp.id,
     title: event.title,
@@ -88,6 +105,7 @@ function toDashboardItem(rsvp: IRsvpRecord, event: IEventRecord): IRsvpDashboard
     timeLabel: `${formatEventTime(event.startDatetime)} - ${formatEventTime(event.endDatetime)}`,
     rsvpStatus: rsvp.status,
     eventStatus: normalizeEventStatus(event),
+    waitlistPosition: getWaitlistPosition(rsvp, eventRsvps),
   };
 }
 
@@ -124,7 +142,12 @@ class RsvpDashboardService implements IRsvpDashboardService {
         return Err(UnexpectedDependencyError("Unable to resolve event details for an RSVP."));
       }
 
-      const item = toDashboardItem(rsvp, event);
+      const eventRsvpsResult = await this.repository.listRsvpsForEvent(event.id);
+      if (eventRsvpsResult.ok === false) {
+        return Err(UnexpectedDependencyError(eventRsvpsResult.value.message));
+      }
+
+      const item = toDashboardItem(rsvp, event, eventRsvpsResult.value);
       if (isUpcomingItem(rsvp, event)) {
         upcomingRsvps.push(item);
       } else {
@@ -167,15 +190,9 @@ class RsvpDashboardService implements IRsvpDashboardService {
       return Err(ValidationError("Cannot cancel an RSVP for a past or cancelled event."));
     }
 
-    const upsertResult = await this.repository.upsertRsvp({
-      id: rsvp.id,
-      eventId: rsvp.eventId,
-      userId: rsvp.userId,
-      status: "cancelled",
-    });
-
-    if (upsertResult.ok === false) {
-      return Err(UnexpectedDependencyError(upsertResult.value.message));
+    const cancelResult = await this.repository.cancelRsvpWithWaitlistPromotion(rsvp.id);
+    if (cancelResult.ok === false) {
+      return Err(UnexpectedDependencyError(cancelResult.value.message));
     }
 
     return Ok(undefined);

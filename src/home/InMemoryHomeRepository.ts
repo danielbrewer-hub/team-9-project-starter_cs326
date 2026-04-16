@@ -95,6 +95,51 @@ function upsertStoredRsvp(input: ICreateRsvpInput, now: Date = new Date()): IRsv
   return cloneRsvp(created);
 }
 
+function cancelStoredRsvpWithWaitlistPromotion(
+  rsvpId: string,
+): { cancelled: IRsvpRecord; promoted: IRsvpRecord | null } | null {
+  const existing = rsvps.get(rsvpId);
+  if (!existing) {
+    return null;
+  }
+
+  const nextCancelled: IRsvpRecord = {
+    ...existing,
+    status: "cancelled",
+  };
+
+  let nextPromoted: IRsvpRecord | null = null;
+  if (existing.status === "going") {
+    const waitlisted = Array.from(rsvps.values())
+      .filter(
+        (rsvp) =>
+          rsvp.eventId === existing.eventId &&
+          rsvp.id !== existing.id &&
+          rsvp.status === "waitlisted",
+      )
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+
+    const nextWaitlisted = waitlisted[0] ?? null;
+    if (nextWaitlisted) {
+      nextPromoted = {
+        ...nextWaitlisted,
+        status: "going",
+      };
+    }
+  }
+
+  // Commit staged updates together so cancellation and promotion are atomic.
+  rsvps.set(nextCancelled.id, nextCancelled);
+  if (nextPromoted) {
+    rsvps.set(nextPromoted.id, nextPromoted);
+  }
+
+  return {
+    cancelled: cloneRsvp(nextCancelled),
+    promoted: nextPromoted ? cloneRsvp(nextPromoted) : null,
+  };
+}
+
 function seedRepository(): void {
   if (events.size > 0) {
     return;
@@ -175,6 +220,20 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
   async upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>> {
     return Ok(upsertStoredRsvp(input));
   }
+
+  async cancelRsvpWithWaitlistPromotion(
+    rsvpId: string,
+  ): Promise<Result<{ cancelled: IRsvpRecord; promoted: IRsvpRecord | null }, Error>> {
+    const operationResult = cancelStoredRsvpWithWaitlistPromotion(rsvpId);
+    if (!operationResult) {
+      return {
+        ok: false,
+        value: new Error("RSVP not found."),
+      };
+    }
+
+    return Ok(operationResult);
+  }
 }
 
 export function CreateInMemoryHomeContentRepository(): IHomeContentRepository {
@@ -187,6 +246,7 @@ export {
   listStoredEvents,
   listStoredRsvpsForEvent,
   listStoredRsvpsForUser,
+  cancelStoredRsvpWithWaitlistPromotion,
   upsertStoredRsvp,
   updateStoredEvent,
 };
