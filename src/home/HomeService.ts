@@ -24,10 +24,24 @@ export interface IHomePageData {
   }>;
 }
 
+export interface IEventUpdateFields {
+  title: string;
+  body: string;
+  location: string;
+  category: string;
+  capacity?: number;
+}
+
 export interface IHomeService {
   getHomePageData(
     actor: IAuthenticatedUser,
   ): Promise<Result<IHomePageData, HomeServiceError>>;
+
+   updateEvent(
+    actor: IAuthenticatedUser,
+    eventId: string,
+    fields: IEventUpdateFields,
+  ): Promise<Result<IHomePageData["recentEvents"][number], HomeServiceError>>;
 }
 
 function UnexpectedDependencyError(message: string): HomeServiceError {
@@ -36,6 +50,53 @@ function UnexpectedDependencyError(message: string): HomeServiceError {
 
 class HomeService implements IHomeService {
   constructor(private readonly contentRepository: IHomeContentRepository) {}
+
+   async updateEvent(
+    actor: IAuthenticatedUser,
+    eventId: string,
+    fields: IEventUpdateFields,
+  ): Promise<Result<IHomePageData["recentEvents"][number], HomeServiceError>> {
+    const findResult = await this.contentRepository.findEventById(eventId);
+    if (findResult.ok === false) {
+      return Err(UnexpectedDependencyError(findResult.value.message));
+    }
+
+    if (findResult.value === null) {
+      return Err(NotFoundError(`Event ${eventId} not found.`));
+    }
+
+    const updateResult = await this.contentRepository.updateEvent(eventId, {
+      title: fields.title,
+      body: fields.body,
+      location: fields.location,
+      category: fields.category,
+      ...(fields.capacity !== undefined && { capacity: fields.capacity }),
+    });
+
+    if (updateResult.ok === false) {
+      return Err(UnexpectedDependencyError(updateResult.value.message));
+    }
+
+    const updated = updateResult.value;
+
+    const rsvpResult = await this.contentRepository.listRsvpsForEvent(eventId);
+    if (rsvpResult.ok === false) {
+      return Err(UnexpectedDependencyError(rsvpResult.value.message));
+    }
+
+    const attendeeCount = rsvpResult.value.filter(
+      (rsvp) => rsvp.status === "going",
+    ).length;
+
+    return Ok({
+      id: updated.id,
+      title: updated.title,
+      status: updated.status,
+      location: updated.location,
+      category: updated.category,
+      attendeeCount,
+    });
+  }
 
   async getHomePageData(
     actor: IAuthenticatedUser,
