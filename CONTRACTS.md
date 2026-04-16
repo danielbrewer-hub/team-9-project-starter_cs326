@@ -138,6 +138,11 @@ Success result:
 - Includes future-facing permission flags:
   `canEdit`, `canCancel`, and `canRsvp`.
 
+Permission flag meaning:
+- `canEdit` is true for the organizer who owns the event and for admins.
+- `canCancel` follows the same rule as `canEdit`.
+- `canRsvp` is true only for members viewing a published event.
+
 Named errors:
 - `EventNotFoundError`
   - Returned when the event ID does not exist.
@@ -164,6 +169,10 @@ Success result:
 - `createEvent` returns the stored event record, including timestamps.
 - `countGoingRsvpsForEvent` returns only the number of RSVPs whose status is
   `going`.
+
+Visibility note:
+- Unauthorized draft viewers are handled in the Feature 2 service, not in the
+  repository. The repository returns the stored record when it exists.
 
 ### `IUserRepository`
 
