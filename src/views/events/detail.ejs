@@ -60,7 +60,7 @@
           <% if (event.canEdit) { %>
             <%/* Feature 3 — GET /events/:id/edit renders the edit-form.ejs partial */%>
             <a
-              href="/events/<%= event.id %>/edit"
+              hx-="/events/<%= event.id %>/edit"
               class="block w-full rounded-2xl border border-slate-200 bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-slate-700"
             >
               Edit Event
