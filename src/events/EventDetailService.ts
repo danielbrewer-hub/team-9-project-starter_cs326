@@ -99,10 +99,10 @@ class EventDetailService implements IEventDetailService {
       // 4. Decide new status
 
       let newStatus: "going" | "waitlisted" | "cancelled";
-      if (existingRsvp && existingRsvp.status === "going") {
+      if (existingRsvp?.status === "going" || existingRsvp?.status === "waitlisted") {
         newStatus = "cancelled";
       } else if (isFull) {
-        newStatus = existingRsvp && existingRsvp.status === "waitlisted" ? "cancelled" : "waitlisted";
+        newStatus = "waitlisted";
       } else {
         newStatus = "going";
       }
