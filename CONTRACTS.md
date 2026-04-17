@@ -401,6 +401,9 @@ Dashboard sorting:
     event appears first.
     Past and cancelled RSVPs should be sorted by event startDatetime descending
     so the most recent old or cancelled event appears first.
+Dashboard event links:
+    Upcoming RSVP items expose eventId and link to /events/:id using the same
+    event detail route and link styling as the home page event listings.
 Cancel RSVP:
     cancelRsvp verifies the RSVP belongs to the actor, rejects already-cancelled
     RSVPs, rejects RSVPs for past or cancelled events, and persists the change by
