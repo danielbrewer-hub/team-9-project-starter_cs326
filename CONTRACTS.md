@@ -151,6 +151,7 @@ EventNotFoundError: Returned for missing events and unauthorized draft viewers:
     name: "EventNotFoundError";
     message: string;
     };
+    Unauthorized draft viewers receive 404 instead of 403 so the application does not reveal that the draft exists.
 EventDetailError: Union type for detail-page failures:
     export type EventDetailError =
     | EventNotFoundError
