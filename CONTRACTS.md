@@ -214,6 +214,13 @@ IRsvpRecord: A single RSVP for the repository (internal):
     status: RsvpStatus;
     createdAt: string;
     }
+IAuthenticatedUser: Session-derived identity passed into the RSVP dashboard service:
+    export interface IAuthenticatedUser {
+    id: string;
+    email: string;
+    displayName: string;
+    role: UserRole;
+    }
 IRsvpDashboardItem: A single RSVP used in the dashboard:
     export interface IRsvpDashboardItem {
     id: string;
@@ -254,6 +261,27 @@ RsvpDashboardError: Union type for any potential RSVP related errors:
     message: string;
     };
 
+Behavior:
+Dashboard access:
+    The dashboard requires an authenticated actor. Users and admins may view it.
+    Staff organizer accounts are blocked because organizers do not attend events.
+Dashboard grouping:
+    getRsvpDashboardData loads the actor's RSVP records, resolves each RSVP's event
+    with findEventById, and maps the combined data into IRsvpDashboardItem values.
+    RSVP records with status "going" or "waitlisted" are placed in upcomingRsvps
+    when the event is not "past" or "cancelled".
+    RSVP records with status "cancelled" or events with status "past" or
+    "cancelled" are placed in pastRsvps.
+Dashboard sorting:
+    Upcoming RSVPs should be sorted by event startDatetime ascending so the next
+    event appears first.
+    Past and cancelled RSVPs should be sorted by event startDatetime descending
+    so the most recent old or cancelled event appears first.
+Cancel RSVP:
+    cancelRsvp verifies the RSVP belongs to the actor, rejects already-cancelled
+    RSVPs, rejects RSVPs for past or cancelled events, and persists the change by
+    upserting the RSVP with status "cancelled".
+
 Factory Helpers:
 For RsvpDashboardController:
     export function CreateRsvpDashboardController(
@@ -271,6 +299,8 @@ For RsvpDashboardService:
 
 Other Helpers:
 In HomeRepository.ts:
+  findEventById(eventId: string): Promise<Result<IEventRecord | null, Error>>;
+    Returns the stored event or null so RSVP dashboard items can include event details
   listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>>;
     Returns all RSVP records for an event
   listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
