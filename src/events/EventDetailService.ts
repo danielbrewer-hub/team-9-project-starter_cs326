@@ -2,9 +2,11 @@ import { Err, Ok, type Result } from "../lib/result";
 import type { IUserRepository } from "../auth/UserRepository";
 import type { IEventRecord, IHomeContentRepository } from "../home/HomeRepository";
 import {
+  EventAuthorizationError,
   EventNotFoundError,
   UnexpectedDependencyError,
   type EventDetailError,
+  type EventRsvpToggleError,
 } from "./errors";
 import type { IActingUser, IEventDetailView } from "./EventTypes";
 import { canManageEvent, canViewEvent } from "./EventVisibility";
@@ -23,7 +25,7 @@ export interface IEventDetailService {
   toggleRsvp(
     eventId: string,
     actor: IActingUser,
-  ): Promise<Result<IEventDetailView, EventDetailError>>;
+  ): Promise<Result<IEventDetailView, EventRsvpToggleError>>;
 }
 
 function normalizeEventId(eventId: string): string | null {
@@ -61,7 +63,11 @@ class EventDetailService implements IEventDetailService {
     async toggleRsvp(
       eventId: string,
       actor: IActingUser,
-    ): Promise<Result<IEventDetailView, EventDetailError>> {
+    ): Promise<Result<IEventDetailView, EventRsvpToggleError>> {
+      if (actor.role !== "user") {
+        return Err(EventAuthorizationError("Only members may RSVP for events."));
+      }
+
       // 1. Find event
       const normalizedEventId = normalizeEventId(eventId);
       if (!normalizedEventId) {

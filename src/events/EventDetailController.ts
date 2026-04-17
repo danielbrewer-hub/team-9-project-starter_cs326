@@ -33,11 +33,10 @@ class EventDetailController implements IEventDetailController {
       return;
     }
 
-    // Block staff from toggling RSVP
-    if (actor.role === "staff") {
-      this.logger.warn(`Blocked RSVP toggle attempt by staff user ${actor.id}`);
+    if (actor.role !== "user") {
+      this.logger.warn(`Blocked RSVP toggle attempt by ${actor.role} user ${actor.id}`);
       res.status(403).render("partials/error", {
-        message: "Staff are not allowed to RSVP for events.",
+        message: "Only members may RSVP for events.",
         layout: false,
       });
       return;
@@ -49,21 +48,11 @@ class EventDetailController implements IEventDetailController {
       if (!result.ok) throw result.value;
 
       this.logger.info(`POST /events/${eventId}/rsvp/toggle by ${actor.id}`);
-      // If HTMX, render only the RSVP action area partial
       if (req.get("HX-Request") === "true") {
-        res.render("events/detail", {
+        res.render("events/partials/rsvp-action-area", {
           session: browserSession,
           event: result.value,
           layout: false,
-        }, (err, html) => {
-          if (err) {
-            this.logger.error(`HTMX RSVP partial render error: ${err}`);
-            res.status(500).send("Unable to update RSVP.");
-          } else {
-            // Extract only the RSVP action area div
-            const match = html.match(/<div id=\"rsvp-action-area\"[\s\S]*?<\/div>/);
-            res.send(match ? match[0] : "");
-          }
         });
       } else {
         res.redirect(`/events/${eventId}`);
