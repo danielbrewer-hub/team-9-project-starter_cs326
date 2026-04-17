@@ -9,6 +9,7 @@ import type {
 
 export interface IRsvpDashboardItem {
   id: string;
+  eventId: string;
   title: string;
   category: string;
   location: string;
@@ -81,6 +82,7 @@ function normalizeEventStatus(event: IEventRecord): string {
 function toDashboardItem(rsvp: IRsvpRecord, event: IEventRecord): IRsvpDashboardItem {
   return {
     id: rsvp.id,
+    eventId: event.id,
     title: event.title,
     category: event.category,
     location: event.location,
