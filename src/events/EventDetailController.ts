@@ -44,6 +44,7 @@ class EventDetailController implements IEventDetailController {
     }
 
     try {
+      // Pass userId for IActingUser, which is actor.id from IAuthenticatedUser
       const result = await this.service.toggleRsvp(eventId, { userId: actor.id, role: actor.role });
       if (!result.ok) throw result.value;
 
@@ -105,7 +106,7 @@ class EventDetailController implements IEventDetailController {
     if (!authenticatedUser) {
       return null;
     }
-
+    // Map IAuthenticatedUserSession to IAuthenticatedUser (id, not userId)
     return {
       id: authenticatedUser.userId,
       email: authenticatedUser.email,
