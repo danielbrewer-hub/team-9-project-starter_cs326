@@ -56,59 +56,7 @@
     <aside class="space-y-4">
       <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
         <h2 class="text-xl font-semibold text-slate-900">Action Area</h2>
-        <div class="mt-4 space-y-3 text-sm text-slate-600">
-          <% if (event.canEdit || event.canCancel) { %>
-            <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-              Organizer controls for editing and cancelling are reserved for
-              later Sprint features.
-            </div>
-          <% } %>
-
-          <% if (event.canRsvp) { %>
-              <form id="rsvp-toggle-form" method="post" action="/events/<%= event.id %>/rsvp/toggle" class="space-y-2">
-                <button
-                  type="submit"
-                  class="w-full rounded-lg px-4 py-2 font-semibold text-white shadow transition focus:outline-none
-                    <%= event.rsvpStatus === 'going' ? 'bg-red-600 hover:bg-red-700' : event.rsvpStatus === 'waitlisted' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-600 hover:bg-blue-700' %>"
-                  <%= event.isRsvpPending ? 'disabled' : '' %>
-                >
-                  <% if (event.rsvpStatus === 'going') { %>
-                    Cancel RSVP
-                  <% } else if (event.rsvpStatus === 'waitlisted') { %>
-                    Leave Waitlist
-                  <% } else { %>
-                    <% if (event.isFull) { %>
-                      Join Waitlist
-                    <% } else { %>
-                      RSVP Going
-                    <% } %>
-                  <% } %>
-                </button>
-                <div class="text-xs text-slate-600">
-                  <% if (event.rsvpStatus === 'going') { %>
-                    You are attending this event.
-                  <% } else if (event.rsvpStatus === 'waitlisted') { %>
-                    You are on the waitlist.
-                  <% } else { %>
-                    <% if (event.isFull) { %>
-                      Event is full. You can join the waitlist.
-                    <% } else { %>
-                      You are not RSVPed.
-                    <% } %>
-                  <% } %>
-                </div>
-                <div class="text-xs text-slate-500">
-                  <strong>Attendance:</strong> <%= event.attendeeCount %> / <%= event.capacity || '∞' %>
-                </div>
-              </form>
-          <% } %>
-
-          <% if (!event.canEdit && !event.canCancel && !event.canRsvp) { %>
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              No direct actions are available for your role on this event yet.
-            </div>
-          <% } %>
-        </div>
+        <%- include("partials/rsvp-action-area", { event }) %>
       </section>
 
       <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
