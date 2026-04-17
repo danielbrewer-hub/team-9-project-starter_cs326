@@ -387,8 +387,9 @@ RsvpDashboardError: Union type for any potential RSVP related errors:
 
 Behavior:
 Dashboard access:
-    The dashboard requires an authenticated actor. Users and admins may view it.
-    Staff organizer accounts are blocked because organizers do not attend events.
+    The dashboard requires an authenticated actor. Only users may view it.
+    Staff organizer and admin accounts are blocked because organizers do not
+    attend events.
 Dashboard grouping:
     getRsvpDashboardData loads the actor's RSVP records, resolves each RSVP's event
     with findEventById, and maps the combined data into IRsvpDashboardItem values.
