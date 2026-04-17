@@ -1,16 +1,19 @@
-import type { Request, Response } from 'express'
 import type { EventService, InvalidSearchError } from './EventService'
-import { AppSessionStore, recordPageView } from '../session/AppSession'
+import type { Request, Response } from 'express'
 
-export class EventController {
+export interface IEventController {
+  list(req: Request, res: Response): Promise<void>
+  search(req: Request, res: Response): Promise<void>
+}
+
+class EventController implements IEventController {
   constructor(private readonly eventService: EventService) {}
 
   list = async (req: Request, res: Response): Promise<void> => {
-    const session = recordPageView(req.session as AppSessionStore)
     const category = typeof req.query.category === 'string' ? req.query.category : ''
     const timeframe = typeof req.query.timeframe === 'string' ? req.query.timeframe : 'all'
 
-    const result = this.eventService.filterEvents({ category, timeframe })
+    const result = await this.eventService.filterEvents({ category, timeframe })
 
     if (!result.ok) {
       res.status(500).render('partials/error', { message: 'Something went wrong.' })
@@ -18,7 +21,6 @@ export class EventController {
     }
 
     res.render('events/list', {
-      session,
       events: result.value,
       searchQuery: '',
       category,
@@ -28,14 +30,12 @@ export class EventController {
   }
 
   search = async (req: Request, res: Response): Promise<void> => {
-    const session = recordPageView(req.session as AppSessionStore)
     const q = typeof req.query.q === 'string' ? req.query.q : ''
 
-    const result = this.eventService.searchEvents({ q })
+    const result = await this.eventService.searchEvents({ q })
 
     if (!result.ok) {
       res.render('events/list', {
-        session,
         events: [],
         searchQuery: q,
         category: '',
@@ -46,7 +46,6 @@ export class EventController {
     }
 
     res.render('events/list', {
-      session,
       events: result.value,
       searchQuery: q,
       category: '',
@@ -54,4 +53,8 @@ export class EventController {
       error: null,
     })
   }
+}
+
+export function CreateEventController(eventService: EventService): IEventController {
+  return new EventController(eventService)
 }

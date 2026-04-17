@@ -3,6 +3,11 @@ import type { Result } from "../lib/result";
 export type EventStatus = "draft" | "published" | "cancelled" | "past";
 export type RsvpStatus = "going" | "waitlisted" | "cancelled";
 
+export const DEMO_PUBLISHED_EVENT_ID = "event-1";
+export const DEMO_DRAFT_EVENT_ID = "event-2";
+export const DEMO_PUBLISHED_EVENT_ORGANIZER_ID = "user-admin";
+export const DEMO_DRAFT_EVENT_ORGANIZER_ID = "user-staff";
+
 export interface IEventRecord {
   id: string;
   title: string;
@@ -66,6 +71,7 @@ export interface IHomeContentRepository {
     input: IUpdateEventInput,
   ): Promise<Result<IEventRecord | null, Error>>;
   listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>>;
+  countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>;
   listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
   upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>>;
 }
