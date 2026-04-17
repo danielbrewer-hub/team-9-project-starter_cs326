@@ -7,6 +7,7 @@ import {
   type EventDetailError,
 } from "./errors";
 import type { IActingUser, IEventDetailView } from "./EventTypes";
+import { canManageEvent, canViewEvent } from "./EventVisibility";
 
 type EventPermissionFlags = Pick<IEventDetailView, "canEdit" | "canCancel" | "canRsvp">;
 
@@ -30,25 +31,13 @@ function normalizeEventId(eventId: string): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function canManageEvent(event: IEventRecord, actor: IActingUser): boolean {
-  return actor.role === "admin" || event.organizerId === actor.userId;
-}
-
-function canViewEventDetail(event: IEventRecord, actor: IActingUser): boolean {
-  if (event.status !== "draft") {
-    return true;
-  }
-
-  return canManageEvent(event, actor);
-}
-
 function buildEventPermissionFlags(
   event: IEventRecord,
   actor: IActingUser,
 ): EventPermissionFlags {
   return {
-    canEdit: canManageEvent(event, actor),
-    canCancel: canManageEvent(event, actor),
+    canEdit: canManageEvent(event, actor.userId, actor.role),
+    canCancel: canManageEvent(event, actor.userId, actor.role),
     canRsvp: actor.role === "user" && event.status === "published",
   };
 }
@@ -146,7 +135,7 @@ class EventDetailService implements IEventDetailService {
     }
 
     const event = eventResult.value;
-    if (!event || !canViewEventDetail(event, actor)) {
+    if (!event || !canViewEvent(event, actor.userId, actor.role)) {
       return Err(EventNotFoundError("Event not found."));
     }
 
@@ -201,8 +190,6 @@ export function CreateEventDetailService(
 
 export {
   buildEventPermissionFlags,
-  canManageEvent,
-  canViewEventDetail,
   normalizeEventId,
   toEventDetailView,
 };

@@ -130,6 +130,20 @@ IEventDetailService: The service that loads and authorizes event detail data:
         actor: IActingUser,
     ): Promise<Result<IEventDetailView, EventDetailError>>;
     }
+Visibility Helpers:
+In EventVisibility.ts:
+  export function canManageEvent(
+    event: IEventRecord,
+    actorUserId: string,
+    actorRole: UserRole,
+  ): boolean;
+    Returns true when the actor is the organizer for the event or has the admin role
+  export function canViewEvent(
+    event: IEventRecord,
+    actorUserId: string,
+    actorRole: UserRole,
+  ): boolean;
+    Returns true for all non-draft events and only for organizer/admin viewers on drafts
 
 Error Type:
 EventNotFoundError: Returned for missing events and unauthorized draft viewers:
