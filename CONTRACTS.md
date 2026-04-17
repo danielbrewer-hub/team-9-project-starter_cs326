@@ -232,7 +232,7 @@ IEventDetailService: The service that loads event detail data and toggles RSVPs:
     toggleRsvp(
         eventId: string,
         actor: IActingUser,
-    ): Promise<Result<IEventDetailView, EventDetailError>>;
+    ): Promise<Result<IEventDetailView, EventRsvpToggleError>>;
     }
 
 Error Type:
@@ -252,8 +252,8 @@ EventValidationError: Returned when the RSVP toggle request is invalid:
     message: string;
     field?: string;
     };
-EventDetailError: Union type for RSVP toggle failures:
-    export type EventDetailError =
+EventRsvpToggleError: Union type for RSVP toggle failures:
+    export type EventRsvpToggleError =
     | EventNotFoundError
     | EventAuthorizationError
     | EventValidationError
@@ -266,7 +266,7 @@ RSVP button state:
     The button label reflects rsvpStatus and isFull: "RSVP Going", "Join
     Waitlist", "Cancel RSVP", or "Leave Waitlist".
 Toggle access:
-    The toggle route requires an authenticated actor. Members may toggle RSVPs.
+    The toggle route requires an authenticated actor. Member users may toggle RSVPs.
     Staff organizers and admins are rejected because organizers do not attend
     events. Cancelled and past events are not open for RSVP toggles.
 Toggle status rules:
@@ -277,8 +277,10 @@ Toggle status rules:
     An existing "cancelled" RSVP is reactivated as "going" when capacity is
     available or "waitlisted" when the event is full.
 Immediate update:
-    HTMX RSVP toggle requests re-render the RSVP action area so the button state
-    and attendee count update without a full page reload.
+    The RSVP controls render inside the #rsvp-action-area element. The RSVP form
+    posts with HTMX to /events/:id/rsvp/toggle, targets #rsvp-action-area, and
+    swaps the returned partial into that element so the button state and attendee
+    count update without a full page reload.
     Non-HTMX requests redirect back to the event detail page.
 
 Factory Helpers:
