@@ -217,6 +217,7 @@ IRsvpRecord: A single RSVP for the repository (internal):
 IRsvpDashboardItem: A single RSVP used in the dashboard:
     export interface IRsvpDashboardItem {
     id: string;
+    eventId: string;
     title: string;
     category: string;
     location: string;
