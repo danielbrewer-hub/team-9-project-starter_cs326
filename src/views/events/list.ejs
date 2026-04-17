@@ -1,34 +1,29 @@
 <div>
   <h1>Events</h1>
 
-  <!-- Search (Feature 10) -->
   <form method="GET" action="/events/search">
-    <input
-      type="text"
-      name="q"
-      value="<%= searchQuery || '' %>"
-      placeholder="Search events..."
-    />
+    <input type="text" name="q" value="<%= searchQuery || '' %>" placeholder="Search events..." />
     <button type="submit">Search</button>
     <% if (searchQuery) { %>
       <a href="/events">Clear search</a>
     <% } %>
   </form>
 
-  <!-- Filters (Feature 6) -->
   <form method="GET" action="/events">
-    <label>Category:
+    <label>
+      Category:
       <select name="category">
         <option value="">All Categories</option>
-        <option value="social"      <%= category === 'social'      ? 'selected' : '' %>>Social</option>
-        <option value="educational" <%= category === 'educational' ? 'selected' : '' %>>Educational</option>
-        <option value="volunteer"   <%= category === 'volunteer'   ? 'selected' : '' %>>Volunteer</option>
-        <option value="sports"      <%= category === 'sports'      ? 'selected' : '' %>>Sports</option>
-        <option value="arts"        <%= category === 'arts'        ? 'selected' : '' %>>Arts</option>
+        <option value="social"       <%= category === 'social'       ? 'selected' : '' %>>Social</option>
+        <option value="educational"  <%= category === 'educational'  ? 'selected' : '' %>>Educational</option>
+        <option value="volunteer"    <%= category === 'volunteer'    ? 'selected' : '' %>>Volunteer</option>
+        <option value="sports"       <%= category === 'sports'       ? 'selected' : '' %>>Sports</option>
+        <option value="arts"         <%= category === 'arts'         ? 'selected' : '' %>>Arts</option>
       </select>
     </label>
 
-    <label>Timeframe:
+    <label>
+      Timeframe:
       <select name="timeframe">
         <option value="all"          <%= timeframe === 'all'          ? 'selected' : '' %>>All Upcoming</option>
         <option value="this-week"    <%= timeframe === 'this-week'    ? 'selected' : '' %>>This Week</option>
@@ -43,7 +38,7 @@
   </form>
 
   <% if (error) { %>
-    <p style="color:red;"><%= error %></p>
+    <p style="color: red;"><%= error %></p>
   <% } %>
 
   <% if (events.length === 0) { %>
@@ -53,16 +48,11 @@
       <% events.forEach(function(event) { %>
         <li>
           <strong><%= event.title %></strong>
-          (<%= event.category %>)
-          <br>
-          📍 <%= event.location %>
-          <br>
-          🗓 <%= event.startDatetime.toLocaleDateString('en-US', {
-            weekday: 'short', month: 'short', day: 'numeric',
-            hour: 'numeric', minute: '2-digit'
-          }) %>
-          <% if (event.capacity !== null) { %>
-            · Capacity: <%= event.capacity %>
+          <span>(<%= event.category %>)</span><br />
+          <span><%= event.location %></span><br />
+          <span><%= new Date(event.startDatetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %></span>
+          <% if (event.capacity != null) { %>
+            <span>· Capacity: <%= event.capacity %></span>
           <% } %>
           <p><%= event.description %></p>
         </li>
