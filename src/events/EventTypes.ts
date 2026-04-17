@@ -1,5 +1,5 @@
 import type { UserRole } from "../auth/User";
-import type { IEventRecord } from "../home/HomeRepository";
+import type { IEventRecord, RsvpStatus } from "../home/HomeRepository";
 
 export interface IActingUser {
   userId: string;
@@ -22,4 +22,7 @@ export interface IEventDetailView extends IEventRecord {
   canEdit: boolean;
   canCancel: boolean;
   canRsvp: boolean;
+  rsvpStatus?: RsvpStatus | null;
+  isRsvpPending?: boolean;
+  isFull?: boolean;
 }

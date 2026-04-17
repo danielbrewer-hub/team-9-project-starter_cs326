@@ -26,6 +26,12 @@ export type EventCreationError =
 
 export type EventDetailError = EventNotFoundError | EventUnexpectedDependencyError;
 
+export type EventRsvpToggleError =
+  | EventNotFoundError
+  | EventAuthorizationError
+  | EventValidationError
+  | EventUnexpectedDependencyError;
+
 export function EventValidationError(message: string, field?: string): EventValidationError {
   return {
     name: "EventValidationError",
