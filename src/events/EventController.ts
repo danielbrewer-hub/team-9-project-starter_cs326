@@ -1,7 +1,6 @@
 import type { EventService, InvalidSearchError } from './EventService'
 import type { Request, Response } from 'express'
 
-
 export interface IEventController {
   list(req: Request, res: Response): Promise<void>
   search(req: Request, res: Response): Promise<void>
