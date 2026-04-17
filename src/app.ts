@@ -127,8 +127,6 @@ class ExpressApp implements IApp {
   }
 
   private registerRoutes(): void {
-    // ── Public routes ────────────────────────────────────────────────
-
     this.app.get(
       "/",
       asyncHandler(async (req, res) => {
@@ -142,12 +140,10 @@ class ExpressApp implements IApp {
       "/login",
       asyncHandler(async (req, res) => {
         const store = sessionStore(req);
-
         if (getAuthenticatedUser(store)) {
           res.redirect("/home");
           return;
         }
-
         await this.authController.showLogin(req, res);
       }),
     );
@@ -166,15 +162,10 @@ class ExpressApp implements IApp {
       }),
     );
 
-    // ── Admin routes ─────────────────────────────────────────────────
-
     this.app.get(
       "/admin/users",
       asyncHandler(async (req, res) => {
-        if (!this.requireRole(req, res, ["admin"], "Only Admin can manage users.")) {
-          return;
-        }
-
+        if (!this.requireRole(req, res, ["admin"], "Only Admin can manage users.")) return;
         await this.authController.showAdminUsers(req, res);
       }),
     );
@@ -182,10 +173,7 @@ class ExpressApp implements IApp {
     this.app.post(
       "/admin/users",
       asyncHandler(async (req, res) => {
-        if (!this.requireRole(req, res, ["admin"], "Only Admin can manage users.")) {
-          return;
-        }
-
+        if (!this.requireRole(req, res, ["admin"], "Only Admin can manage users.")) return;
         await this.authController.createUserFromForm(req, res);
       }),
     );
@@ -193,23 +181,15 @@ class ExpressApp implements IApp {
     this.app.post(
       "/admin/users/:id/delete",
       asyncHandler(async (req, res) => {
-        if (!this.requireRole(req, res, ["admin"], "Only Admin can manage users.")) {
-          return;
-        }
-
+        if (!this.requireRole(req, res, ["admin"], "Only Admin can manage users.")) return;
         await this.authController.deleteUserFromForm(req, res);
       }),
     );
 
-    // ── Authenticated home page ──────────────────────────────────────
-
     this.app.get(
       "/home",
       asyncHandler(async (req, res) => {
-        if (!this.requireAuthenticated(req, res)) {
-          return;
-        }
-
+        if (!this.requireAuthenticated(req, res)) return;
         await this.homeController.showHome(req, res);
       }),
     );
@@ -217,10 +197,7 @@ class ExpressApp implements IApp {
     this.app.get(
       "/events/new",
       asyncHandler(async (req, res) => {
-        if (!this.requireAuthenticated(req, res)) {
-          return;
-        }
-
+        if (!this.requireAuthenticated(req, res)) return;
         await this.eventCreationController.showCreateEventForm(req, res);
       }),
     );
@@ -228,10 +205,7 @@ class ExpressApp implements IApp {
     this.app.post(
       "/events",
       asyncHandler(async (req, res) => {
-        if (!this.requireAuthenticated(req, res)) {
-          return;
-        }
-
+        if (!this.requireAuthenticated(req, res)) return;
         await this.eventCreationController.createEventFromForm(req, res);
       }),
     );
@@ -239,10 +213,7 @@ class ExpressApp implements IApp {
     this.app.get(
       "/events/:id",
       asyncHandler(async (req, res) => {
-        if (!this.requireAuthenticated(req, res)) {
-          return;
-        }
-
+        if (!this.requireAuthenticated(req, res)) return;
         await this.eventDetailController.showEventDetail(req, res);
       }),
     );
@@ -250,10 +221,7 @@ class ExpressApp implements IApp {
     this.app.post(
       "/events/:id/rsvp/toggle",
       asyncHandler(async (req, res) => {
-        if (!this.requireAuthenticated(req, res)) {
-          return;
-        }
-
+        if (!this.requireAuthenticated(req, res)) return;
         await this.eventDetailController.toggleRsvp(req, res);
       }),
     );
@@ -261,10 +229,7 @@ class ExpressApp implements IApp {
     this.app.get(
       "/rsvp",
       asyncHandler(async (req, res) => {
-        if (!this.requireAuthenticated(req, res)) {
-          return;
-        }
-
+        if (!this.requireAuthenticated(req, res)) return;
         await this.rsvpDashboardController.showRsvpDashboard(req, res);
       }),
     );
@@ -272,15 +237,12 @@ class ExpressApp implements IApp {
     this.app.post(
       "/rsvp/:id/cancel",
       asyncHandler(async (req, res) => {
-        if (!this.requireAuthenticated(req, res)) {
-          return;
-        }
-
+        if (!this.requireAuthenticated(req, res)) return;
         await this.rsvpDashboardController.cancelRsvp(req, res);
       }),
     );
 
-    // ── Events ───────────────────────────────────────────────────────
+    // ── Event list + search (Feature 6 & 10) ─────────────────────────
 
     this.app.get(
       "/events",
@@ -297,8 +259,6 @@ class ExpressApp implements IApp {
         await this.eventController.search(req, res);
       }),
     );
-
-    // ── Error handler ────────────────────────────────────────────────
 
     this.app.use((err: unknown, _req: Request, res: Response, _next: (value?: unknown) => void) => {
       const message = err instanceof Error ? err.message : "Unexpected server error.";
@@ -324,5 +284,13 @@ export function CreateApp(
   eventController: IEventController,
   logger: ILoggingService,
 ): IApp {
-  return new ExpressApp(authController, eventCreationController, eventDetailController, homeController, rsvpDashboardController, eventController, logger);
+  return new ExpressApp(
+    authController,
+    eventCreationController,
+    eventDetailController,
+    homeController,
+    rsvpDashboardController,
+    eventController,
+    logger,
+  );
 }
