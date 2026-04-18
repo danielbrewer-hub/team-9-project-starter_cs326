@@ -74,4 +74,7 @@ export interface IHomeContentRepository {
   countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>;
   listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
   upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>>;
+  cancelRsvpWithWaitlistPromotion(
+    rsvpId: string,
+  ): Promise<Result<{ cancelled: IRsvpRecord; promoted: IRsvpRecord | null }, Error>>;
 }
