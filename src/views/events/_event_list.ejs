@@ -1,0 +1,30 @@
+<div id="event-list">
+  <% if (error) { %>
+    <p class="text-red-600 font-medium mt-2"><%= error %></p>
+  <% } %>
+
+  <% if (events.length === 0) { %>
+    <p class="text-slate-500 mt-4">No events found.</p>
+  <% } else { %>
+    <ul class="mt-4 space-y-4 list-none p-0">
+      <% events.forEach(function(event) { %>
+        <li class="bg-white rounded-xl border border-slate-200 shadow p-4">
+          <a href="/events/<%= event.id %>" class="font-semibold text-slate-900 no-underline hover:underline">
+            <%= event.title %>
+          </a>
+          <span class="ml-2 text-xs text-slate-400 capitalize">(<%= event.category %>)</span>
+          <br />
+          <span class="text-sm text-slate-600"><%= event.location %></span>
+          <br />
+          <span class="text-sm text-slate-500">
+            <%= new Date(event.startDatetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %>
+          </span>
+          <% if (event.capacity != null) { %>
+            <span class="text-sm text-slate-400"> · Capacity: <%= event.capacity %></span>
+          <% } %>
+          <p class="text-sm text-slate-600 mt-1 mb-0"><%= event.description %></p>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</div>
