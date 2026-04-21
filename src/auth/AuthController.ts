@@ -1,8 +1,7 @@
-import type { Request, Response } from "express";
+import type { Response } from "express";
 import type { IAdminUserService } from "./AdminUserService";
 import {
   getAuthenticatedUser,
-  recordPageView,
   signInAuthenticatedUser,
   signOutAuthenticatedUser,
   touchAppSession,
@@ -15,12 +14,30 @@ import type { IUserSummary, UserRole } from "./User";
 import type { AuthError } from "./errors";
 
 export interface IAuthController {
-  showLogin(req: Request, res: Response): Promise<void>;
-  showAdminUsers(req: Request, res: Response): Promise<void>;
-  loginFromForm(req: Request, res: Response): Promise<void>;
-  logoutFromForm(req: Request, res: Response): Promise<void>;
-  createUserFromForm(req: Request, res: Response): Promise<void>;
-  deleteUserFromForm(req: Request, res: Response): Promise<void>;
+  showLogin(res: Response, session: IAppBrowserSession, pageError?: string | null): Promise<void>;
+  showAdminUsers(
+    res: Response,
+    session: IAppBrowserSession,
+    pageError?: string | null,
+  ): Promise<void>;
+  loginFromForm(
+    res: Response,
+    email: string,
+    password: string,
+    store: AppSessionStore,
+  ): Promise<void>;
+  logoutFromForm(res: Response, store: AppSessionStore): Promise<void>;
+  createUserFromForm(
+    res: Response,
+    input: { email: string; displayName: string; password: string; role: UserRole },
+    session: IAppBrowserSession,
+  ): Promise<void>;
+  deleteUserFromForm(
+    res: Response,
+    userId: string,
+    actingUserId: string,
+    session: IAppBrowserSession,
+  ): Promise<void>;
 }
 
 class AuthController implements IAuthController {
@@ -64,27 +81,27 @@ class AuthController implements IAuthController {
   }
 
   async showLogin(
-    req: Request,
     res: Response,
+    session: IAppBrowserSession,
     pageError: string | null = null,
   ): Promise<void> {
-    const session = recordPageView(req.session as AppSessionStore);
     res.render("auth/login", { pageError, session });
   }
 
   async showAdminUsers(
-    req: Request,
     res: Response,
+    session: IAppBrowserSession,
     pageError: string | null = null,
   ): Promise<void> {
-    const session = recordPageView(req.session as AppSessionStore);
     await this.renderAdminUsersPage(res, session, pageError);
   }
 
-  async loginFromForm(req: Request, res: Response): Promise<void> {
-    const email = typeof req.body.email === "string" ? req.body.email : "";
-    const password = typeof req.body.password === "string" ? req.body.password : "";
-    const store = req.session as AppSessionStore;
+  async loginFromForm(
+    res: Response,
+    email: string,
+    password: string,
+    store: AppSessionStore,
+  ): Promise<void> {
     const session = touchAppSession(store);
     const result = await this.service.authenticate({ email, password });
 
@@ -94,7 +111,7 @@ class AuthController implements IAuthController {
       const log = status >= 500 ? this.logger.error : this.logger.warn;
       log.call(this.logger, `Login failed: ${error.message}`);
       res.status(status);
-      res.render("auth/login", { pageError: error.message, session });
+      await this.showLogin(res, session, error.message);
       return;
     }
 
@@ -103,8 +120,7 @@ class AuthController implements IAuthController {
     res.redirect("/");
   }
 
-  async logoutFromForm(req: Request, res: Response): Promise<void> {
-    const store = req.session as AppSessionStore;
+  async logoutFromForm(res: Response, store: AppSessionStore): Promise<void> {
     const currentUser = getAuthenticatedUser(store);
 
     if (currentUser) {
@@ -116,22 +132,10 @@ class AuthController implements IAuthController {
   }
 
   async createUserFromForm(
-    req: Request,
     res: Response,
+    input: { email: string; displayName: string; password: string; role: UserRole },
+    session: IAppBrowserSession,
   ): Promise<void> {
-    const session = touchAppSession(req.session as AppSessionStore);
-    const roleValue = typeof req.body.role === "string" ? req.body.role : "user";
-    const role: UserRole =
-      roleValue === "admin" || roleValue === "staff" || roleValue === "user"
-        ? roleValue
-        : "user";
-
-    const input = {
-      email: typeof req.body.email === "string" ? req.body.email : "",
-      displayName: typeof req.body.displayName === "string" ? req.body.displayName : "",
-      password: typeof req.body.password === "string" ? req.body.password : "",
-      role,
-    };
     const result = await this.adminUsers.createUser(input);
 
     if (result.ok === false) {
@@ -148,23 +152,12 @@ class AuthController implements IAuthController {
   }
 
   async deleteUserFromForm(
-    req: Request,
     res: Response,
+    userId: string,
+    actingUserId: string,
+    session: IAppBrowserSession,
   ): Promise<void> {
-    const store = req.session as AppSessionStore;
-    const session = touchAppSession(store);
-    const currentUser = getAuthenticatedUser(store);
-    if (!currentUser) {
-      this.logger.warn("Delete user requested without an authenticated session");
-      res.status(401).render("partials/error", {
-        message: "Please log in to continue.",
-        layout: false,
-      });
-      return;
-    }
-
-    const userId = typeof req.params.id === "string" ? req.params.id : "";
-    const result = await this.adminUsers.deleteUser(userId, currentUser.userId);
+    const result = await this.adminUsers.deleteUser(userId, actingUserId);
 
     if (result.ok === false) {
       const status = this.mapErrorStatus(result.value);
