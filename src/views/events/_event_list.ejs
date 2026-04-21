@@ -1,0 +1,24 @@
+<div id="event-list">
+  <% if (error) { %>
+    <p class="error"><%= error %></p>
+  <% } %>
+
+  <% if (events.length === 0) { %>
+    <p>No events found.</p>
+  <% } else { %>
+    <ul>
+      <% events.forEach(function(event) { %>
+        <li>
+          <strong><%= event.title %></strong>
+          <span>(<%= event.category %>)</span><br />
+          <span><%= event.location %></span><br />
+          <span><%= new Date(event.startDatetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %></span>
+          <% if (event.capacity != null) { %>
+            <span>· Capacity: <%= event.capacity %></span>
+          <% } %>
+          <p><%= event.description %></p>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</div>
