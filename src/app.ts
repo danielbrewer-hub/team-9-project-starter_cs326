@@ -202,6 +202,25 @@ class ExpressApp implements IApp {
       }),
     );
 
+    // ── Event list + search must be registered before /events/:id ────────────
+    // Otherwise Express matches "search" as an event ID parameter.
+
+    this.app.get(
+      "/events",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) return;
+        await this.eventController.list(req, res);
+      }),
+    );
+
+    this.app.get(
+      "/events/search",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) return;
+        await this.eventController.search(req, res);
+      }),
+    );
+
     this.app.post(
       "/events",
       asyncHandler(async (req, res) => {
@@ -239,24 +258,6 @@ class ExpressApp implements IApp {
       asyncHandler(async (req, res) => {
         if (!this.requireAuthenticated(req, res)) return;
         await this.rsvpDashboardController.cancelRsvp(req, res);
-      }),
-    );
-
-    // ── Event list + search (Feature 6 & 10) ─────────────────────────
-
-    this.app.get(
-      "/events",
-      asyncHandler(async (req, res) => {
-        if (!this.requireAuthenticated(req, res)) return;
-        await this.eventController.list(req, res);
-      }),
-    );
-
-    this.app.get(
-      "/events/search",
-      asyncHandler(async (req, res) => {
-        if (!this.requireAuthenticated(req, res)) return;
-        await this.eventController.search(req, res);
       }),
     );
 
