@@ -55,11 +55,6 @@ project-starter/
 │   │   ├── User.ts              #   User model types and role definitions
 │   │   ├── UserRepository.ts    #   User storage interface
 │   │   └── errors.ts            #   Auth-specific error types
-│   ├── home/
-│   │   ├── HomeController.ts    #   Controller for the actual app home page
-│   │   ├── HomeRepository.ts    #   Repository contract for home page content
-│   │   ├── HomeService.ts       #   Business logic for the home/dashboard page
-│   │   └── InMemoryHomeRepository.ts  # In-memory repository implementation
 │   ├── lib/
 │   │   └── result.ts            # Generic Result<T, E> type for error handling
 │   ├── service/
@@ -75,7 +70,7 @@ project-starter/
 │   │   │   └── base.ejs         # Master layout with navigation bar
 │   │   ├── partials/
 │   │   │   └── error.ejs        # Shared error banner partial
-│   │   └── home.ejs             # Home page rendered from the home controller/service
+│   │   └── home.ejs             # Placeholder home page (replace with your own)
 │   ├── static/                  # Static assets directory (create to add your own)
 │   ├── app.ts                   # Express app setup, middleware, and route registration
 │   ├── composition.ts           # Dependency injection / wiring
@@ -97,17 +92,6 @@ project-starter/
 
 ## Where to Start Building
 
-## Layering Rules
-
-This starter now demonstrates a 4-layer feature flow:
-
-- **Route/App** -> Maps URL + HTTP method to a controller method.
-- **Controller** -> Reads `req`, `res`, params, body, query, headers, and session; calls a service; maps `Result<T, E>` to an HTTP response.
-- **Service** -> Contains business logic only. No Express types, no session access.
-- **Repository** -> Handles storage and retrieval. Use in-memory implementations first, then swap to Prisma later.
-
-The auth module and the `home/` feature both follow this pattern. Use `home/` as the reference for the actual app side.
-
 ### 1. Define Your Data Model
 
 Edit `prisma/schema.prisma` to add your project's database tables, then run:
@@ -126,11 +110,11 @@ Follow the existing patterns in `src/auth/` as a reference:
 
 ### 3. Create Controllers
 
-Build HTTP handlers that translate between web requests and your service layer (like `AuthController.ts` or `home/HomeController.ts`). Controllers should be the only layer that knows about Express, sessions, redirects, or view rendering.
+Build HTTP handlers that translate between web requests and your service layer (like `AuthController.ts`). Controllers handle request parsing, call services, and render views.
 
 ### 4. Add Routes
 
-Register your routes in `src/app.ts` inside the `registerRoutes` method. Keep these route handlers thin: auth guard if needed, then delegate to a controller.
+Register your routes in `src/app.ts` inside the `registerRoutes` method. Use the built-in auth helpers:
 
 ```typescript
 // Require any authenticated user
@@ -166,7 +150,7 @@ Add EJS templates in `src/views/`. The master layout (`layouts/base.ejs`) provid
 
 ### 6. Wire It Together
 
-Update `src/composition.ts` to instantiate and inject your new repositories, services, and controllers. Pass your controller(s) to `CreateApp`.
+Update `src/composition.ts` to instantiate and inject your new services, repositories, and controllers. Pass your controller(s) to `CreateApp`.
 
 ## Available Scripts
 
