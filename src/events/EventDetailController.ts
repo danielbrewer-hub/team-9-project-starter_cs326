@@ -49,7 +49,7 @@ class EventDetailController implements IEventDetailController {
 
       this.logger.info(`POST /events/${eventId}/rsvp/toggle by ${actor.id}`);
       if (req.get("HX-Request") === "true") {
-        res.render("events/partials/rsvp-action-area", {
+        res.render("events/partials/rsvp-toggle-response", {
           session: browserSession,
           event: result.value,
           layout: false,

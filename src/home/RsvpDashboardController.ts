@@ -34,13 +34,13 @@ class RsvpDashboardController implements IRsvpDashboardController {
   }
 
   private isMember(actor: IAuthenticatedUser): boolean {
-    return actor.role === "user" || actor.role === "admin";
+    return actor.role === "user";
   }
 
   private renderUnauthorized(req: Request, res: Response, session: IAppBrowserSession): void {
     this.logger.warn("Blocked unauthorized request to RSVP dashboard");
     res.status(403).render("partials/error", {
-      message: AuthorizationRequired("Only users and admins may view RSVP dashboards.").message,
+      message: AuthorizationRequired("Only users may view RSVP dashboards.").message,
       layout: false,
     });
   }

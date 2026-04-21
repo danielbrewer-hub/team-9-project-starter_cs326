@@ -387,8 +387,9 @@ RsvpDashboardError: Union type for any potential RSVP related errors:
 
 Behavior:
 Dashboard access:
-    The dashboard requires an authenticated actor. Users and admins may view it.
-    Staff organizer accounts are blocked because organizers do not attend events.
+    The dashboard requires an authenticated actor. Only users may view it.
+    Staff organizer and admin accounts are blocked because organizers do not
+    attend events.
 Dashboard grouping:
     getRsvpDashboardData loads the actor's RSVP records, resolves each RSVP's event
     with findEventById, and maps the combined data into IRsvpDashboardItem values.
@@ -401,6 +402,9 @@ Dashboard sorting:
     event appears first.
     Past and cancelled RSVPs should be sorted by event startDatetime descending
     so the most recent old or cancelled event appears first.
+Dashboard event links:
+    Upcoming RSVP items expose eventId and link to /events/:id using the same
+    event detail route and link styling as the home page event listings.
 Cancel RSVP:
     cancelRsvp verifies the RSVP belongs to the actor, rejects already-cancelled
     RSVPs, rejects RSVPs for past or cancelled events, and persists the change by
