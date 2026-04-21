@@ -268,6 +268,18 @@ class ExpressApp implements IApp {
         layout: false,
       });
     });
+  
+    // -- Event Editing & Publication/Cancellation routes (Feat 3, 5) -----
+
+    this.app.get(
+      "events/:id/edit",
+      asyncHandler(async (req,res)=>{
+        if(!this.requireAuthenticated(req,res)) return;
+        await this.
+
+    }),
+  );
+  
   }
 
   getExpressApp(): express.Express {
