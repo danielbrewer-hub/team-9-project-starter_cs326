@@ -53,16 +53,20 @@ function createLoggerMock(): jest.Mocked<ILoggingService> {
   };
 }
 
-function createResponseMock(): jest.Mocked<Pick<Response, "status" | "render" | "redirect">> {
+function createResponseMock(): jest.Mocked<Pick<Response, "status" | "render" | "redirect" | "set" | "send">> {
   const response = {
     status: jest.fn(),
     render: jest.fn(),
     redirect: jest.fn(),
+    set: jest.fn(),
+    send: jest.fn(),
   };
 
   response.status.mockReturnValue(response as unknown as Response);
   response.render.mockReturnValue(response as unknown as Response);
   response.redirect.mockReturnValue(response as unknown as Response);
+  response.set.mockReturnValue(response as unknown as Response);
+  response.send.mockReturnValue(response as unknown as Response);
 
   return response;
 }
@@ -206,6 +210,32 @@ describe("EventDetailController RSVP toggle", () => {
       });
       expect(res.redirect).not.toHaveBeenCalled();
       expect(res.status).not.toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith(
+        `POST /events/${event.id}/rsvp/toggle by ${usersByRole.user.id}`,
+      );
+    });
+
+    it("triggers a dashboard refresh when a dashboard HTMX toggle succeeds", async () => {
+      const { controller, service, logger, res } = createHarness();
+      const event = createEvent({ rsvpStatus: "cancelled", attendeeCount: 4 });
+      service.toggleRsvp.mockResolvedValue(Ok(event));
+      const req = createRequest(
+        usersByRole.user,
+        { id: event.id },
+        { "HX-Request": "true", "HX-RSVP-Dashboard": "true" },
+      );
+
+      await controller.toggleRsvp(req, res as unknown as Response);
+
+      expect(service.toggleRsvp).toHaveBeenCalledWith(event.id, {
+        userId: usersByRole.user.id,
+        role: "user",
+      });
+      expect(res.set).toHaveBeenCalledWith("HX-Trigger", "rsvp-dashboard-refresh");
+      expect(res.status).toHaveBeenCalledWith(204);
+      expect(res.send).toHaveBeenCalledWith();
+      expect(res.render).not.toHaveBeenCalled();
+      expect(res.redirect).not.toHaveBeenCalled();
       expect(logger.info).toHaveBeenCalledWith(
         `POST /events/${event.id}/rsvp/toggle by ${usersByRole.user.id}`,
       );
