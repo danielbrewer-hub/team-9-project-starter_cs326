@@ -40,7 +40,7 @@ class RsvpDashboardController implements IRsvpDashboardController {
   private renderUnauthorized(req: Request, res: Response, session: IAppBrowserSession): void {
     this.logger.warn("Blocked unauthorized request to RSVP dashboard");
     res.status(403).render("partials/error", {
-      message: AuthorizationRequired("Only members may view RSVP dashboards.").message,
+      message: AuthorizationRequired("Only users may view RSVP dashboards.").message,
       layout: false,
     });
   }

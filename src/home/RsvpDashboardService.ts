@@ -9,6 +9,7 @@ import type {
 
 export interface IRsvpDashboardItem {
   id: string;
+  eventId: string;
   title: string;
   category: string;
   location: string;
@@ -81,6 +82,7 @@ function normalizeEventStatus(event: IEventRecord): string {
 function toDashboardItem(rsvp: IRsvpRecord, event: IEventRecord): IRsvpDashboardItem {
   return {
     id: rsvp.id,
+    eventId: event.id,
     title: event.title,
     category: event.category,
     location: event.location,
@@ -99,6 +101,20 @@ function isUpcomingItem(rsvp: IRsvpRecord, event: IEventRecord): boolean {
   return event.status !== "past" && event.status !== "cancelled";
 }
 
+function compareEventStartAscending(
+  left: { event: IEventRecord },
+  right: { event: IEventRecord },
+): number {
+  return left.event.startDatetime.localeCompare(right.event.startDatetime);
+}
+
+function compareEventStartDescending(
+  left: { event: IEventRecord },
+  right: { event: IEventRecord },
+): number {
+  return right.event.startDatetime.localeCompare(left.event.startDatetime);
+}
+
 class RsvpDashboardService implements IRsvpDashboardService {
   constructor(private readonly repository: IHomeContentRepository) {}
 
@@ -110,8 +126,8 @@ class RsvpDashboardService implements IRsvpDashboardService {
       return Err(UnexpectedDependencyError(rsvpsResult.value.message));
     }
 
-    const upcomingRsvps: IRsvpDashboardItem[] = [];
-    const pastRsvps: IRsvpDashboardItem[] = [];
+    const upcomingRsvps: Array<{ item: IRsvpDashboardItem; event: IEventRecord }> = [];
+    const pastRsvps: Array<{ item: IRsvpDashboardItem; event: IEventRecord }> = [];
 
     for (const rsvp of rsvpsResult.value) {
       const eventResult = await this.repository.findEventById(rsvp.eventId);
@@ -126,13 +142,16 @@ class RsvpDashboardService implements IRsvpDashboardService {
 
       const item = toDashboardItem(rsvp, event);
       if (isUpcomingItem(rsvp, event)) {
-        upcomingRsvps.push(item);
+        upcomingRsvps.push({ item, event });
       } else {
-        pastRsvps.push(item);
+        pastRsvps.push({ item, event });
       }
     }
 
-    return Ok({ upcomingRsvps, pastRsvps });
+    return Ok({
+      upcomingRsvps: upcomingRsvps.sort(compareEventStartAscending).map(({ item }) => item),
+      pastRsvps: pastRsvps.sort(compareEventStartDescending).map(({ item }) => item),
+    });
   }
 
   async cancelRsvp(

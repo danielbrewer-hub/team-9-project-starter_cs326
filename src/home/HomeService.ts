@@ -1,5 +1,6 @@
 import { Err, Ok, type Result } from "../lib/result";
 import type { IAuthenticatedUser } from "../auth/User";
+import { canViewEvent } from "../events/EventVisibility";
 import type {
   IHomeContentRepository,
 } from "./HomeRepository";
@@ -119,8 +120,12 @@ class HomeService implements IHomeService {
       return Err(UnexpectedDependencyError(eventsResult.value.message));
     }
 
+    const visibleEvents = eventsResult.value.filter((event) =>
+      canViewEvent(event, actor.id, actor.role),
+    );
+
     const recentEvents: IHomePageData["recentEvents"] = [];
-    for (const event of eventsResult.value) {
+    for (const event of visibleEvents) {
       const rsvpResult = await this.contentRepository.listRsvpsForEvent(event.id);
       if (rsvpResult.ok === false) {
         return Err(UnexpectedDependencyError(rsvpResult.value.message));
@@ -136,8 +141,8 @@ class HomeService implements IHomeService {
       });
     }
 
-    const publishedCount = eventsResult.value.filter((event) => event.status === "published").length;
-    const organizerCount = new Set(eventsResult.value.map((event) => event.organizerId)).size;
+    const publishedCount = visibleEvents.filter((event) => event.status === "published").length;
+    const organizerCount = new Set(visibleEvents.map((event) => event.organizerId)).size;
 
     return Ok({
       welcomeTitle: "Welcome to Project Starter",
@@ -145,7 +150,7 @@ class HomeService implements IHomeService {
         "You are signed in and ready to build. The in-memory repository now models events and RSVPs behind exported repository functions.",
       signedInSummary: `${actor.displayName} (${actor.email}, role: ${actor.role})`,
       eventSummary: [
-        `${eventsResult.value.length} total events`,
+        `${visibleEvents.length} total events`,
         `${publishedCount} published events`,
         `${organizerCount} organizers represented`,
       ],

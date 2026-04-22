@@ -85,6 +85,24 @@ EventCreationError: Union type for creation failures:
     | EventAuthorizationError
     | EventUnexpectedDependencyError;
 
+Behavior:
+Creation access:
+    The creation form and submission route require an authenticated actor.
+    Staff and admin users may create events. User accounts receive a 403 response.
+Draft creation:
+    Successful creation always stores a new event with status "draft". organizerId,
+    createdAt, and updatedAt are server-owned values derived outside the form.
+HTTP response mapping:
+    EventValidationError responses use status 400 and render the creation form with
+    field or form-level errors. EventAuthorizationError responses use status 403.
+    EventUnexpectedDependencyError responses use status 500. Non-HTMX successful
+    submissions redirect to /events/:id for the created event.
+Immediate update:
+    The creation form submits with HTMX to /events, targets the form container, and
+    swaps the returned partial into that element. HTMX validation failures return
+    only the form fragment with errors. HTMX success returns only a success fragment
+    with a link to the created event detail page.
+
 Factory Helpers:
 For EventCreationController:
     export function CreateEventCreationController(
@@ -130,6 +148,20 @@ IEventDetailService: The service that loads and authorizes event detail data:
         actor: IActingUser,
     ): Promise<Result<IEventDetailView, EventDetailError>>;
     }
+Visibility Helpers:
+In EventVisibility.ts:
+  export function canManageEvent(
+    event: IEventRecord,
+    actorUserId: string,
+    actorRole: UserRole,
+  ): boolean;
+    Returns true when the actor is the organizer for the event or has the admin role
+  export function canViewEvent(
+    event: IEventRecord,
+    actorUserId: string,
+    actorRole: UserRole,
+  ): boolean;
+    Returns true for all non-draft events and only for organizer/admin viewers on drafts
 
 Error Type:
 EventNotFoundError: Returned for missing events and unauthorized draft viewers:
@@ -137,10 +169,20 @@ EventNotFoundError: Returned for missing events and unauthorized draft viewers:
     name: "EventNotFoundError";
     message: string;
     };
+    Unauthorized draft viewers receive 404 instead of 403 so the application does not reveal that the draft exists.
 EventDetailError: Union type for detail-page failures:
     export type EventDetailError =
     | EventNotFoundError
     | EventUnexpectedDependencyError;
+
+Behavior:
+Detail access:
+    Published, cancelled, and past events are visible to any authenticated actor.
+    Draft events are visible only to the owning organizer and admin users.
+HTTP response mapping:
+    EventNotFoundError responses use status 404 for both missing events and hidden
+    draft events. EventUnexpectedDependencyError responses use status 500.
+    Successful requests render the event detail page.
 
 Factory Helpers:
 For EventDetailController:
@@ -172,6 +214,129 @@ In UserRepository.ts:
 # Feature 3 (Dan)
 
 # Feature 4 (Isik)
+Routes:
+POST /events/:id/rsvp/toggle -> eventDetailController.toggleRsvp()
+
+Interfaces:
+RsvpStatus: Union type for an RSVP status:
+    export type RsvpStatus = "going" | "waitlisted" | "cancelled";
+ICreateRsvpInput: Repository payload used to create or update an RSVP:
+    export interface ICreateRsvpInput {
+    id: string;
+    eventId: string;
+    userId: string;
+    status: RsvpStatus;
+    }
+IRsvpRecord: A single RSVP for the repository (internal):
+    export interface IRsvpRecord {
+    id: string;
+    eventId: string;
+    userId: string;
+    status: RsvpStatus;
+    createdAt: string;
+    }
+IEventDetailView RSVP fields: Event detail view data used to render the RSVP button state:
+    export interface IEventDetailView extends IEventRecord {
+    organizerDisplayName: string;
+    attendeeCount: number;
+    canEdit: boolean;
+    canCancel: boolean;
+    canRsvp: boolean;
+    rsvpStatus?: RsvpStatus | null;
+    isRsvpPending?: boolean;
+    isFull?: boolean;
+    }
+IEventDetailController: The controller for the event detail page and RSVP toggle:
+    export interface IEventDetailController {
+    showEventDetail(req: Request, res: Response): Promise<void>;
+    toggleRsvp(req: Request, res: Response): Promise<void>;
+    }
+IEventDetailService: The service that loads event detail data and toggles RSVPs:
+    export interface IEventDetailService {
+    getEventDetail(
+        eventId: string,
+        actor: IActingUser,
+    ): Promise<Result<IEventDetailView, EventDetailError>>;
+    toggleRsvp(
+        eventId: string,
+        actor: IActingUser,
+    ): Promise<Result<IEventDetailView, EventRsvpToggleError>>;
+    }
+
+Error Type:
+EventNotFoundError: Returned for missing events and events that are not open for RSVP:
+    export type EventNotFoundError = {
+    name: "EventNotFoundError";
+    message: string;
+    };
+EventAuthorizationError: Returned when a non-member actor tries to RSVP:
+    export type EventAuthorizationError = {
+    name: "EventAuthorizationError";
+    message: string;
+    };
+EventValidationError: Returned when the RSVP toggle request is invalid:
+    export type EventValidationError = {
+    name: "EventValidationError";
+    message: string;
+    field?: string;
+    };
+EventRsvpToggleError: Union type for RSVP toggle failures:
+    export type EventRsvpToggleError =
+    | EventNotFoundError
+    | EventAuthorizationError
+    | EventValidationError
+    | EventUnexpectedDependencyError;
+
+Behavior:
+RSVP button state:
+    The event detail page shows an RSVP action only when canRsvp is true.
+    canRsvp is true only for member users viewing a published event.
+    The button label reflects rsvpStatus and isFull: "RSVP Going", "Join
+    Waitlist", "Cancel RSVP", or "Leave Waitlist".
+Toggle access:
+    The toggle route requires an authenticated actor. Member users may toggle RSVPs.
+    Staff organizers and admins are rejected because organizers do not attend
+    events. Cancelled and past events are not open for RSVP toggles.
+Toggle status rules:
+    A new RSVP becomes "going" when the event has capacity available.
+    A new RSVP becomes "waitlisted" when the event is full.
+    An existing "going" RSVP is changed to "cancelled".
+    An existing "waitlisted" RSVP is changed to "cancelled".
+    An existing "cancelled" RSVP is reactivated as "going" when capacity is
+    available or "waitlisted" when the event is full.
+Immediate update:
+    The RSVP controls render inside the #rsvp-action-area element. The RSVP form
+    posts with HTMX to /events/:id/rsvp/toggle, targets #rsvp-action-area, and
+    swaps the returned partial into that element so the button state and attendee
+    count update without a full page reload.
+    Non-HTMX requests redirect back to the event detail page.
+
+Factory Helpers:
+For EventDetailController:
+    export function CreateEventDetailController(
+    service: IEventDetailService,
+    logger: ILoggingService,
+    ): IEventDetailController {
+    return new EventDetailController(service, logger);
+    }
+For EventDetailService:
+    export function CreateEventDetailService(
+    contentRepository: IHomeContentRepository,
+    userRepository: IUserRepository,
+    ): IEventDetailService {
+    return new EventDetailService(contentRepository, userRepository);
+    }
+
+Other Helpers:
+In HomeRepository.ts:
+  findEventById(eventId: string): Promise<Result<IEventRecord | null, Error>>;
+    Returns the stored event or null
+  listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
+    Returns all RSVP records for the actor so the service can find the event RSVP
+  countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>;
+    Counts only RSVPs with status "going" for capacity and attendee totals
+  upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>>;
+    Creates or updates the in-memory RSVP record and returns the stored value
 
 # Feature 5 (Dan)
 
@@ -200,9 +365,17 @@ IRsvpRecord: A single RSVP for the repository (internal):
     status: RsvpStatus;
     createdAt: string;
     }
+IAuthenticatedUser: Session-derived identity passed into the RSVP dashboard service:
+    export interface IAuthenticatedUser {
+    id: string;
+    email: string;
+    displayName: string;
+    role: UserRole;
+    }
 IRsvpDashboardItem: A single RSVP used in the dashboard:
     export interface IRsvpDashboardItem {
     id: string;
+    eventId: string;
     title: string;
     category: string;
     location: string;
@@ -239,6 +412,31 @@ RsvpDashboardError: Union type for any potential RSVP related errors:
     message: string;
     };
 
+Behavior:
+Dashboard access:
+    The dashboard requires an authenticated actor. Only users may view it.
+    Staff organizer and admin accounts are blocked because organizers do not
+    attend events.
+Dashboard grouping:
+    getRsvpDashboardData loads the actor's RSVP records, resolves each RSVP's event
+    with findEventById, and maps the combined data into IRsvpDashboardItem values.
+    RSVP records with status "going" or "waitlisted" are placed in upcomingRsvps
+    when the event is not "past" or "cancelled".
+    RSVP records with status "cancelled" or events with status "past" or
+    "cancelled" are placed in pastRsvps.
+Dashboard sorting:
+    Upcoming RSVPs should be sorted by event startDatetime ascending so the next
+    event appears first.
+    Past and cancelled RSVPs should be sorted by event startDatetime descending
+    so the most recent old or cancelled event appears first.
+Dashboard event links:
+    Upcoming RSVP items expose eventId and link to /events/:id using the same
+    event detail route and link styling as the home page event listings.
+Cancel RSVP:
+    cancelRsvp verifies the RSVP belongs to the actor, rejects already-cancelled
+    RSVPs, rejects RSVPs for past or cancelled events, and persists the change by
+    upserting the RSVP with status "cancelled".
+
 Factory Helpers:
 For RsvpDashboardController:
     export function CreateRsvpDashboardController(
@@ -256,6 +454,8 @@ For RsvpDashboardService:
 
 Other Helpers:
 In HomeRepository.ts:
+  findEventById(eventId: string): Promise<Result<IEventRecord | null, Error>>;
+    Returns the stored event or null so RSVP dashboard items can include event details
   listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>>;
     Returns all RSVP records for an event
   listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
