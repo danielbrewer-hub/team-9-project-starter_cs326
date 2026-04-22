@@ -85,6 +85,14 @@ EventCreationError: Union type for creation failures:
     | EventAuthorizationError
     | EventUnexpectedDependencyError;
 
+Behavior:
+Creation access:
+    The creation form and submission route require an authenticated actor.
+    Staff and admin users may create events. User accounts receive a 403 response.
+Draft creation:
+    Successful creation always stores a new event with status "draft". organizerId,
+    createdAt, and updatedAt are server-owned values derived outside the form.
+
 Factory Helpers:
 For EventCreationController:
     export function CreateEventCreationController(
