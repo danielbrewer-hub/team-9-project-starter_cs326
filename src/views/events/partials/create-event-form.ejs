@@ -1,11 +1,18 @@
-<div id="event-create-panel">
+<div id="event-create-panel" aria-live="polite">
   <% if (formError) { %>
     <div class="mt-5">
       <%- include("../../partials/error", { message: formError }) %>
     </div>
   <% } %>
 
-  <form method="post" action="/events" class="mt-8 space-y-8">
+  <form
+    method="post"
+    action="/events"
+    hx-post="/events"
+    hx-target="#event-create-panel"
+    hx-swap="outerHTML"
+    class="mt-8 space-y-8"
+  >
     <div class="grid gap-6 md:grid-cols-2">
       <label class="block">
         <span class="block text-sm font-semibold text-slate-700">Title</span>
