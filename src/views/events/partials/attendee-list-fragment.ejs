@@ -1,0 +1,49 @@
+<div class="event-attendee-list-fragment space-y-4 text-sm text-slate-700">
+  <section data-attendee-status="attending" aria-label="Attending">
+    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Attending</h3>
+    <% if (attendeeList.attending.length === 0) { %>
+      <p class="text-slate-500">No attendees yet.</p>
+    <% } else { %>
+      <ul class="mt-1 list-none space-y-1 pl-0">
+        <% for (const row of attendeeList.attending) { %>
+          <li data-display-name="<%= row.displayName %>">
+            <span class="font-medium text-slate-900"><%= row.displayName %></span>
+            <span class="text-slate-500"> — RSVP’d <%= row.rsvpedAt %></span>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+  </section>
+
+  <section data-attendee-status="waitlisted" aria-label="Waitlisted">
+    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Waitlisted</h3>
+    <% if (attendeeList.waitlisted.length === 0) { %>
+      <p class="text-slate-500">Nobody on the waitlist.</p>
+    <% } else { %>
+      <ul class="mt-1 list-none space-y-1 pl-0">
+        <% for (const row of attendeeList.waitlisted) { %>
+          <li data-display-name="<%= row.displayName %>">
+            <span class="font-medium text-slate-900"><%= row.displayName %></span>
+            <span class="text-slate-500"> — RSVP’d <%= row.rsvpedAt %></span>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+  </section>
+
+  <section data-attendee-status="cancelled" aria-label="Cancelled">
+    <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cancelled</h3>
+    <% if (attendeeList.cancelled.length === 0) { %>
+      <p class="text-slate-500">No cancelled RSVPs.</p>
+    <% } else { %>
+      <ul class="mt-1 list-none space-y-1 pl-0">
+        <% for (const row of attendeeList.cancelled) { %>
+          <li data-display-name="<%= row.displayName %>">
+            <span class="font-medium text-slate-900"><%= row.displayName %></span>
+            <span class="text-slate-500"> — RSVP’d <%= row.rsvpedAt %></span>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+  </section>
+</div>
