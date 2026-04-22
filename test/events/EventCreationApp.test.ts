@@ -147,4 +147,63 @@ describe("event creation app layer", () => {
       role: "staff",
     });
   });
+
+  it("returns a success fragment for HTMX creation submissions", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "staff");
+
+    const response = await agent
+      .post("/events")
+      .set("HX-Request", "true")
+      .type("form")
+      .send(validEventForm)
+      .expect(201);
+
+    expect(response.text).toContain('id="event-create-panel"');
+    expect(response.text).toContain("Draft Saved");
+    expect(response.text).toContain("Sprint Demo Prep");
+    expect(response.text).toContain("View Event Detail");
+    expect(response.text).not.toContain("Feature 1");
+  });
+
+  it("returns only the form fragment for HTMX validation failures", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "staff");
+
+    const response = await agent
+      .post("/events")
+      .set("HX-Request", "true")
+      .type("form")
+      .send({
+        ...validEventForm,
+        title: "   ",
+      })
+      .expect(400);
+
+    expect(response.text).toContain('id="event-create-panel"');
+    expect(response.text).toContain("Title is required.");
+    expect(response.text).toContain("Save Draft Event");
+    expect(response.text).not.toContain("Feature 1");
+  });
+
+  it("returns only the form fragment for HTMX dependency failures", async () => {
+    const eventCreationService: jest.Mocked<IEventCreationService> = {
+      createEvent: jest.fn().mockResolvedValue(
+        Err(UnexpectedDependencyError("repository unavailable")),
+      ),
+    };
+    const { app } = createEventAppHarness({ eventCreationService });
+    const agent = await signInAs(app, "staff");
+
+    const response = await agent
+      .post("/events")
+      .set("HX-Request", "true")
+      .type("form")
+      .send(validEventForm)
+      .expect(500);
+
+    expect(response.text).toContain('id="event-create-panel"');
+    expect(response.text).toContain("Unable to create the event right now.");
+    expect(response.text).not.toContain("Feature 1");
+  });
 });
