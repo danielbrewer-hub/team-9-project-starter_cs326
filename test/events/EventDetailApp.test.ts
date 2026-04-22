@@ -42,4 +42,36 @@ describe("event detail app layer", () => {
 
     expect(response.text).toContain("Event not found.");
   });
+
+  it("renders draft event details for the owning organizer", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "staff");
+
+    const response = await agent.get(`/events/${DEMO_DRAFT_EVENT_ID}`).expect(200);
+
+    expect(response.text).toContain("Project Demo Dry Run");
+    expect(response.text).toContain("draft");
+    expect(response.text).toContain("Organizer controls");
+  });
+
+  it("renders draft event details for admins", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "admin");
+
+    const response = await agent.get(`/events/${DEMO_DRAFT_EVENT_ID}`).expect(200);
+
+    expect(response.text).toContain("Project Demo Dry Run");
+    expect(response.text).toContain("draft");
+    expect(response.text).toContain("Organizer controls");
+  });
+
+  it("hides draft events from member users as not found", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "user");
+
+    const response = await agent.get(`/events/${DEMO_DRAFT_EVENT_ID}`).expect(404);
+
+    expect(response.text).toContain("Event not found.");
+    expect(response.text).not.toContain("Project Demo Dry Run");
+  });
 });
