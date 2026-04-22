@@ -278,6 +278,17 @@ class ExpressApp implements IApp {
       }),
     );
 
+    this.app.get(
+      "/rsvp/partials/sections",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.rsvpDashboardController.renderRsvpDashboardSections(req, res);
+      }),
+    );
+
     this.app.post(
       "/rsvp/:id/cancel",
       asyncHandler(async (req, res) => {

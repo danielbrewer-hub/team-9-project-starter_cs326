@@ -10,6 +10,7 @@ import type { IRsvpDashboardService } from "./RsvpDashboardService";
 
 export interface IRsvpDashboardController {
   showRsvpDashboard(req: Request, res: Response): Promise<void>;
+  renderRsvpDashboardSections(req: Request, res: Response): Promise<void>;
   cancelRsvp(req: Request, res: Response): Promise<void>;
 }
 
@@ -83,6 +84,37 @@ class RsvpDashboardController implements IRsvpDashboardController {
       session: browserSession,
       pageError: null,
       dashboard: result.value,
+    });
+  }
+
+  async renderRsvpDashboardSections(req: Request, res: Response): Promise<void> {
+    const browserSession = recordPageView(req.session);
+    const actor = this.toActor(browserSession);
+
+    if (!actor) {
+      this.renderAuthRequired(req, res);
+      return;
+    }
+
+    if (!this.isMember(actor)) {
+      this.renderUnauthorized(req, res, browserSession);
+      return;
+    }
+
+    const result = await this.service.getRsvpDashboardData(actor);
+    if (result.ok === false) {
+      this.logger.error(`Failed to refresh RSVP dashboard: ${result.value.message}`);
+      res.status(500).render("partials/error", {
+        message: "Unable to refresh the RSVP dashboard right now.",
+        layout: false,
+      });
+      return;
+    }
+
+    this.logger.info(`GET /rsvp/partials/sections for ${browserSession.browserLabel}`);
+    res.render("rsvp/partials/dashboard-sections", {
+      dashboard: result.value,
+      layout: false,
     });
   }
 
