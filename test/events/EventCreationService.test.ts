@@ -12,6 +12,11 @@ const staffActor: IActingUser = {
   role: "staff",
 };
 
+const memberActor: IActingUser = {
+  userId: "user-reader",
+  role: "user",
+};
+
 function validInput(overrides: Partial<ICreateEventInput> = {}): ICreateEventInput {
   return {
     title: " Planning Session ",
@@ -77,5 +82,42 @@ describe("EventCreationService", () => {
       expect(result.value.status).toBe("draft");
       expect(result.value.organizerId).toBe("user-staff");
     }
+  });
+
+  it("rejects member users before writing to the repository", async () => {
+    const { repository, service } = createHarness();
+
+    const result = await service.createEvent(validInput(), memberActor);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "EventAuthorizationError",
+        message: "Only organizers and admins can create events.",
+      });
+    }
+    expect(repository.createEvent).not.toHaveBeenCalled();
+  });
+
+  it.each<keyof Pick<ICreateEventInput, "title" | "description" | "location" | "category">>([
+    "title",
+    "description",
+    "location",
+    "category",
+  ])("returns a field validation error when %s is blank", async (field) => {
+    const { repository, service } = createHarness();
+
+    const result = await service.createEvent(
+      validInput({ [field]: "   " }),
+      staffActor,
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value.name).toBe("EventValidationError");
+      expect(result.value.field).toBe(field);
+      expect(result.value.message).toContain("required");
+    }
+    expect(repository.createEvent).not.toHaveBeenCalled();
   });
 });
