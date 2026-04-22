@@ -85,6 +85,24 @@ EventCreationError: Union type for creation failures:
     | EventAuthorizationError
     | EventUnexpectedDependencyError;
 
+Behavior:
+Creation access:
+    The creation form and submission route require an authenticated actor.
+    Staff and admin users may create events. User accounts receive a 403 response.
+Draft creation:
+    Successful creation always stores a new event with status "draft". organizerId,
+    createdAt, and updatedAt are server-owned values derived outside the form.
+HTTP response mapping:
+    EventValidationError responses use status 400 and render the creation form with
+    field or form-level errors. EventAuthorizationError responses use status 403.
+    EventUnexpectedDependencyError responses use status 500. Non-HTMX successful
+    submissions redirect to /events/:id for the created event.
+Immediate update:
+    The creation form submits with HTMX to /events, targets the form container, and
+    swaps the returned partial into that element. HTMX validation failures return
+    only the form fragment with errors. HTMX success returns only a success fragment
+    with a link to the created event detail page.
+
 Factory Helpers:
 For EventCreationController:
     export function CreateEventCreationController(
@@ -156,6 +174,15 @@ EventDetailError: Union type for detail-page failures:
     export type EventDetailError =
     | EventNotFoundError
     | EventUnexpectedDependencyError;
+
+Behavior:
+Detail access:
+    Published, cancelled, and past events are visible to any authenticated actor.
+    Draft events are visible only to the owning organizer and admin users.
+HTTP response mapping:
+    EventNotFoundError responses use status 404 for both missing events and hidden
+    draft events. EventUnexpectedDependencyError responses use status 500.
+    Successful requests render the event detail page.
 
 Factory Helpers:
 For EventDetailController:
