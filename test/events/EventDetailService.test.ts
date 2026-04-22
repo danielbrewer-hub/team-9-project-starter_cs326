@@ -8,7 +8,7 @@ import type {
   IEventRecord,
   IHomeContentRepository,
 } from "../../src/home/HomeRepository";
-import { Ok } from "../../src/lib/result";
+import { Err, Ok } from "../../src/lib/result";
 
 const memberActor: IActingUser = {
   userId: "user-reader",
@@ -196,4 +196,89 @@ describe("EventDetailService", () => {
     expect(repository.countGoingRsvpsForEvent).not.toHaveBeenCalled();
     expect(userRepository.findById).not.toHaveBeenCalled();
   });
+
+  it("maps event lookup failures to UnexpectedDependencyError", async () => {
+    const { repository, service } = createHarness();
+    repository.findEventById.mockResolvedValue(Err(new Error("event lookup failed")));
+
+    const result = await service.getEventDetail("event-published", memberActor);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "UnexpectedDependencyError",
+        message: "event lookup failed",
+      });
+    }
+    expect(repository.countGoingRsvpsForEvent).not.toHaveBeenCalled();
+  });
+
+  it("maps attendee-count failures to UnexpectedDependencyError", async () => {
+    const { repository, service, userRepository } = createHarness();
+    repository.findEventById.mockResolvedValue(Ok(createEvent()));
+    repository.countGoingRsvpsForEvent.mockResolvedValue(
+      Err(new Error("count failed")),
+    );
+
+    const result = await service.getEventDetail("event-published", memberActor);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "UnexpectedDependencyError",
+        message: "count failed",
+      });
+    }
+    expect(userRepository.findById).not.toHaveBeenCalled();
+  });
+
+  it("maps organizer lookup failures to UnexpectedDependencyError", async () => {
+    const { repository, service, userRepository } = createHarness();
+    repository.findEventById.mockResolvedValue(Ok(createEvent()));
+    userRepository.findById.mockResolvedValue(
+      Err(AuthDependencyError("user lookup failed")),
+    );
+
+    const result = await service.getEventDetail("event-published", memberActor);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "UnexpectedDependencyError",
+        message: "user lookup failed",
+      });
+    }
+  });
+
+  it("returns UnexpectedDependencyError when the organizer is missing", async () => {
+    const { repository, service, userRepository } = createHarness();
+    repository.findEventById.mockResolvedValue(Ok(createEvent()));
+    userRepository.findById.mockResolvedValue(Ok(null));
+
+    const result = await service.getEventDetail("event-published", memberActor);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "UnexpectedDependencyError",
+        message: "Unable to load the event organizer.",
+      });
+    }
+  });
+
+  it.each<EventStatus>(["cancelled", "past"])(
+    "allows authenticated users to view %s events",
+    async (status) => {
+      const { repository, service } = createHarness();
+      repository.findEventById.mockResolvedValue(Ok(createEvent({ status })));
+
+      const result = await service.getEventDetail("event-published", memberActor);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.status).toBe(status);
+        expect(result.value.canRsvp).toBe(false);
+      }
+    },
+  );
 });
