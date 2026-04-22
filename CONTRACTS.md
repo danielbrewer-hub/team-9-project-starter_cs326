@@ -306,10 +306,15 @@ Toggle status rules:
     available or "waitlisted" when the event is full.
 Immediate update:
     The RSVP controls render inside the #rsvp-action-area element. The RSVP form
-    posts with HTMX to /events/:id/rsvp/toggle, targets #rsvp-action-area, and
-    swaps the returned partial into that element so the button state and attendee
-    count update without a full page reload.
-    Non-HTMX requests redirect back to the event detail page.
+    uses HTMX as the default enhanced path: it posts to
+    /events/:id/rsvp/toggle, targets #rsvp-action-area, and swaps the returned
+    partial into that element so the button state updates without a full page
+    reload.
+    The server returns an HTML fragment for HTMX requests, not JSON and not a
+    full page. The fragment includes the updated RSVP action area and may include
+    out-of-band HTML for related page fragments such as the attendee count.
+    Non-HTMX requests are the fallback path and redirect back to the event detail
+    page after the RSVP state changes.
 
 Factory Helpers:
 For EventDetailController:
