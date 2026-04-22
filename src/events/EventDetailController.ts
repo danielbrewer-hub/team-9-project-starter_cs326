@@ -6,17 +6,19 @@ import {
   type IAppBrowserSession,
 } from "../session/AppSession";
 import type { ILoggingService } from "../service/LoggingService";
+import type { IEventAttendeeListService } from "./EventAttendeeListService";
 import type { IEventDetailService } from "./EventDetailService";
-
 
 export interface IEventDetailController {
   showEventDetail(req: Request, res: Response): Promise<void>;
   toggleRsvp(req: Request, res: Response): Promise<void>;
+  showAttendeeList(req: Request, res: Response): Promise<void>;
 }
 
 class EventDetailController implements IEventDetailController {
   constructor(
     private readonly service: IEventDetailService,
+    private readonly attendeeListService: IEventAttendeeListService,
     private readonly logger: ILoggingService,
   ) {}
   async toggleRsvp(req: Request, res: Response): Promise<void> {
@@ -90,6 +92,58 @@ class EventDetailController implements IEventDetailController {
     }
   }
 
+  async showAttendeeList(req: Request, res: Response): Promise<void> {
+    const browserSession = recordPageView(req.session);
+    const actor = this.toActor(browserSession);
+    const eventId = typeof req.params.id === "string" ? req.params.id : "";
+
+    if (!actor) {
+      this.logger.warn("Blocked unauthenticated attendee list request");
+      res.status(401).render("partials/error", {
+        message: AuthenticationRequired("Please log in to continue.").message,
+        layout: false,
+      });
+      return;
+    }
+
+    const result = await this.attendeeListService.getAttendeeList(eventId, {
+      userId: actor.id,
+      role: actor.role,
+    });
+
+    if (result.ok) {
+      this.logger.info(`GET /events/${eventId}/attendees for ${actor.id}`);
+      res.status(200).render("events/partials/attendee-list-fragment", {
+        layout: false,
+        attendeeList: result.value,
+      });
+      return;
+    }
+
+    const error = result.value;
+    if (error.name === "EventNotFoundError") {
+      this.logger.warn(`Attendee list: event not found ${eventId}`);
+      res.status(404).render("partials/error", {
+        message: error.message,
+        layout: false,
+      });
+      return;
+    }
+    if (error.name === "EventAuthorizationError") {
+      this.logger.warn(`Attendee list denied for ${actor.id} on ${eventId}`);
+      res.status(403).render("partials/error", {
+        message: error.message,
+        layout: false,
+      });
+      return;
+    }
+    this.logger.error(`Attendee list dependency error: ${error.message}`);
+    res.status(500).render("partials/error", {
+      message: "Unable to load the attendee list right now.",
+      layout: false,
+    });
+  }
+
   private toActor(session: IAppBrowserSession): IAuthenticatedUser | null {
     const authenticatedUser = session.authenticatedUser;
     if (!authenticatedUser) {
@@ -155,7 +209,8 @@ class EventDetailController implements IEventDetailController {
 
 export function CreateEventDetailController(
   service: IEventDetailService,
+  attendeeListService: IEventAttendeeListService,
   logger: ILoggingService,
 ): IEventDetailController {
-  return new EventDetailController(service, logger);
+  return new EventDetailController(service, attendeeListService, logger);
 }
