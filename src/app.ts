@@ -275,7 +275,7 @@ class ExpressApp implements IApp {
       "events/:id/edit",
       asyncHandler(async (req,res)=>{
         if(!this.requireAuthenticated(req,res)) return;
-        await this.
+        await this.eventDetailController.showEditForm(req,res);
 
     }),
   );

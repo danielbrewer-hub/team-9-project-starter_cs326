@@ -5,8 +5,10 @@ export function canManageEvent(
   event: IEventRecord,
   actorUserId: string,
   actorRole: UserRole,
+  start = new Date(event.startDatetime),
+  today = new Date()
 ): boolean {
-  return actorRole === "admin" || event.organizerId === actorUserId;
+  return ((actorRole === "admin" || event.organizerId === actorUserId) && (today < start));
 }
 
 export function canViewEvent(

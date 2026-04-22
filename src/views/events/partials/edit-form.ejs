@@ -42,7 +42,9 @@
     value="<%= event.capacity %>"
   />
 
-  <button type="submit">Submit Changes</button>
+  <button type="submit"
+  method = "put"
+  action = "/events/<event.id%>/edit/finalize">Submit Changes</button>
   <button type="button" hx-get="/events/<%= event.id %>" hx-target="closest .event-container" hx-swap="outerHTML">
     Cancel
   </button>
