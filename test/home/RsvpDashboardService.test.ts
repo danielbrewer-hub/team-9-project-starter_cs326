@@ -411,6 +411,39 @@ describe("RsvpDashboardService", () => {
       expect(repository.upsertRsvp).toHaveBeenCalledTimes(2);
     });
 
+    it("does not attempt promotion when cancelling a going RSVP and the waitlist is empty", async () => {
+      const { repository, service } = createHarness();
+      const event = createEvent({
+        id: "event-1",
+        status: "published",
+        startDatetime: "2026-05-01T12:00:00",
+        endDatetime: "2026-05-01T13:00:00",
+      });
+      const cancellingRsvp = createRsvp({
+        id: "rsvp-going",
+        eventId: "event-1",
+        userId: member.id,
+        status: "going",
+      });
+
+      repository.listRsvpsForUser.mockResolvedValue(Ok([cancellingRsvp]));
+      repository.findEventById.mockResolvedValue(Ok(event));
+      repository.listRsvpsForEvent.mockResolvedValue(Ok([cancellingRsvp]));
+      repository.upsertRsvp.mockResolvedValue(Ok({ ...cancellingRsvp, status: "cancelled" }));
+
+      const result = await service.cancelRsvp("rsvp-going", member);
+
+      expect(result).toEqual(Ok(undefined));
+      expect(repository.listRsvpsForEvent).toHaveBeenCalledWith("event-1");
+      expect(repository.upsertRsvp).toHaveBeenCalledTimes(1);
+      expect(repository.upsertRsvp).toHaveBeenCalledWith({
+        id: "rsvp-going",
+        eventId: "event-1",
+        userId: member.id,
+        status: "cancelled",
+      });
+    });
+
     it("maps RSVP list dependency failures to UnexpectedDependencyError", async () => {
       const { repository, service } = createHarness();
       repository.listRsvpsForUser.mockResolvedValue(
