@@ -3,6 +3,16 @@ import { DEMO_USERS } from "../../src/auth/InMemoryUserRepository";
 import type { IAuthController } from "../../src/auth/AuthController";
 import type { Express, Request, Response } from "express";
 import request from "supertest";
+import { CreateApp } from "../../src/app";
+import { CreateInMemoryUserRepository } from "../../src/auth/InMemoryUserRepository";
+import { CreateEventCreationController } from "../../src/events/EventCreationController";
+import { CreateEventCreationService } from "../../src/events/EventCreationService";
+import { CreateEventDetailController } from "../../src/events/EventDetailController";
+import { CreateEventDetailService } from "../../src/events/EventDetailService";
+import type { IHomeController } from "../../src/home/HomeController";
+import { CreateInMemoryHomeContentRepository } from "../../src/home/InMemoryHomeRepository";
+import type { IHomeContentRepository } from "../../src/home/HomeRepository";
+import type { IRsvpDashboardController } from "../../src/home/RsvpDashboardController";
 import {
   signInAuthenticatedUser,
   type AppSessionStore,
@@ -78,4 +88,49 @@ export async function signInAs(
   const agent = request.agent(app);
   await agent.post("/login").type("form").send({ role }).expect(302);
   return agent;
+}
+
+const homeController: IHomeController = {
+  showHome: jest.fn(async (_req, res) => {
+    res.status(200).send("home");
+  }),
+};
+
+const rsvpDashboardController: IRsvpDashboardController = {
+  showRsvpDashboard: jest.fn(async (_req, res) => {
+    res.status(200).send("rsvp dashboard");
+  }),
+  cancelRsvp: jest.fn(async (_req, res) => {
+    res.status(200).send("rsvp cancelled");
+  }),
+};
+
+export function createEventAppHarness(): {
+  app: Express;
+  contentRepository: IHomeContentRepository;
+  logger: jest.Mocked<ILoggingService>;
+} {
+  const logger = createSilentLogger();
+  const userRepository = CreateInMemoryUserRepository();
+  const contentRepository = CreateInMemoryHomeContentRepository();
+  const eventCreationService = CreateEventCreationService(contentRepository);
+  const eventCreationController = CreateEventCreationController(
+    eventCreationService,
+    logger,
+  );
+  const eventDetailService = CreateEventDetailService(contentRepository, userRepository);
+  const eventDetailController = CreateEventDetailController(
+    eventDetailService,
+    logger,
+  );
+  const app = CreateApp(
+    new EventTestAuthController(),
+    eventCreationController,
+    eventDetailController,
+    homeController,
+    rsvpDashboardController,
+    logger,
+  ).getExpressApp();
+
+  return { app, contentRepository, logger };
 }
