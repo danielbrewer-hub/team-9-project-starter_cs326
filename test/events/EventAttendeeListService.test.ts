@@ -252,6 +252,42 @@ describe("EventAttendeeListService", () => {
       }
     });
 
+    it("sorts the waitlisted group by RSVP createdAt ascending (same rule as other buckets)", async () => {
+      const event = createEvent({ id: "evt-sort-wait" });
+      const rsvps: IRsvpRecord[] = [
+        {
+          id: "w2",
+          eventId: "evt-sort-wait",
+          userId: "u-b",
+          status: "waitlisted",
+          createdAt: "2026-04-11T18:00:00",
+        },
+        {
+          id: "w1",
+          eventId: "evt-sort-wait",
+          userId: "u-a",
+          status: "waitlisted",
+          createdAt: "2026-04-11T08:00:00",
+        },
+      ];
+      const content = createRepositoryMock();
+      content.findEventById.mockResolvedValue(Ok(event));
+      content.listRsvpsForEvent.mockResolvedValue(Ok(rsvps));
+      const users = createUserRepositoryMock();
+      users.findById.mockImplementation(async (id) => Ok(userRecord(id, id)));
+
+      const service = CreateEventAttendeeListService(content, users);
+      const result = await service.getAttendeeList("evt-sort-wait", organizerActor);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.waitlisted.map((r) => r.rsvpedAt)).toEqual([
+          "2026-04-11T08:00:00",
+          "2026-04-11T18:00:00",
+        ]);
+      }
+    });
+
     it("returns UnexpectedDependencyError when a user record is missing for an RSVP", async () => {
       const event = createEvent({ id: "evt-user" });
       const rsvps: IRsvpRecord[] = [
