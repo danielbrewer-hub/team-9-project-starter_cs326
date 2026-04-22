@@ -288,6 +288,127 @@ describe("EventAttendeeListService", () => {
       }
     });
 
+    it("derives waitlist queue positions from sorted waitlisted RSVP order", async () => {
+      const event = createEvent({ id: "evt-queue-position" });
+      const rsvps: IRsvpRecord[] = [
+        {
+          id: "w3",
+          eventId: "evt-queue-position",
+          userId: "u-third",
+          status: "waitlisted",
+          createdAt: "2026-04-11T11:00:00",
+        },
+        {
+          id: "w1",
+          eventId: "evt-queue-position",
+          userId: "u-first",
+          status: "waitlisted",
+          createdAt: "2026-04-11T09:00:00",
+        },
+        {
+          id: "w2",
+          eventId: "evt-queue-position",
+          userId: "u-second",
+          status: "waitlisted",
+          createdAt: "2026-04-11T10:00:00",
+        },
+      ];
+      const content = createRepositoryMock();
+      content.findEventById.mockResolvedValue(Ok(event));
+      content.listRsvpsForEvent.mockResolvedValue(Ok(rsvps));
+      const users = createUserRepositoryMock();
+      users.findById.mockImplementation(async (id) => {
+        const names: Record<string, string> = {
+          "u-first": "Ava First",
+          "u-second": "Ben Second",
+          "u-third": "Cy Third",
+        };
+        return Ok(userRecord(id, names[id] ?? id));
+      });
+
+      const service = CreateEventAttendeeListService(content, users);
+      const result = await service.getAttendeeList("evt-queue-position", organizerActor);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const waitlistQueuePositions = Object.fromEntries(
+          result.value.waitlisted.map((entry, index) => [entry.displayName, index + 1]),
+        );
+
+        expect(waitlistQueuePositions).toEqual({
+          "Ava First": 1,
+          "Ben Second": 2,
+          "Cy Third": 3,
+        });
+      }
+    });
+
+    it("excludes attending and cancelled RSVPs when determining waitlist queue positions", async () => {
+      const event = createEvent({ id: "evt-queue-filter" });
+      const rsvps: IRsvpRecord[] = [
+        {
+          id: "g1",
+          eventId: "evt-queue-filter",
+          userId: "u-going",
+          status: "going",
+          createdAt: "2026-04-11T07:00:00",
+        },
+        {
+          id: "c1",
+          eventId: "evt-queue-filter",
+          userId: "u-cancelled",
+          status: "cancelled",
+          createdAt: "2026-04-11T08:00:00",
+        },
+        {
+          id: "w2",
+          eventId: "evt-queue-filter",
+          userId: "u-second",
+          status: "waitlisted",
+          createdAt: "2026-04-11T10:00:00",
+        },
+        {
+          id: "w1",
+          eventId: "evt-queue-filter",
+          userId: "u-first",
+          status: "waitlisted",
+          createdAt: "2026-04-11T09:00:00",
+        },
+      ];
+      const content = createRepositoryMock();
+      content.findEventById.mockResolvedValue(Ok(event));
+      content.listRsvpsForEvent.mockResolvedValue(Ok(rsvps));
+      const users = createUserRepositoryMock();
+      users.findById.mockImplementation(async (id) => {
+        const names: Record<string, string> = {
+          "u-going": "Gia Going",
+          "u-cancelled": "Cal Cancelled",
+          "u-first": "Ava First",
+          "u-second": "Ben Second",
+        };
+        return Ok(userRecord(id, names[id] ?? id));
+      });
+
+      const service = CreateEventAttendeeListService(content, users);
+      const result = await service.getAttendeeList("evt-queue-filter", adminActor);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        const waitlistQueuePositions = Object.fromEntries(
+          result.value.waitlisted.map((entry, index) => [entry.displayName, index + 1]),
+        );
+
+        expect(waitlistQueuePositions).toEqual({
+          "Ava First": 1,
+          "Ben Second": 2,
+        });
+        expect(result.value.attending.map((entry) => entry.displayName)).toEqual(["Gia Going"]);
+        expect(result.value.cancelled.map((entry) => entry.displayName)).toEqual([
+          "Cal Cancelled",
+        ]);
+      }
+    });
+
     it("returns UnexpectedDependencyError when a user record is missing for an RSVP", async () => {
       const event = createEvent({ id: "evt-user" });
       const rsvps: IRsvpRecord[] = [
