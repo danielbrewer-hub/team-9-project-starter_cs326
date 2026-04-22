@@ -175,6 +175,15 @@ EventDetailError: Union type for detail-page failures:
     | EventNotFoundError
     | EventUnexpectedDependencyError;
 
+Behavior:
+Detail access:
+    Published, cancelled, and past events are visible to any authenticated actor.
+    Draft events are visible only to the owning organizer and admin users.
+HTTP response mapping:
+    EventNotFoundError responses use status 404 for both missing events and hidden
+    draft events. EventUnexpectedDependencyError responses use status 500.
+    Successful requests render the event detail page.
+
 Factory Helpers:
 For EventDetailController:
     export function CreateEventDetailController(
