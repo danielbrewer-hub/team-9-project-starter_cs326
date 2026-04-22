@@ -6,9 +6,15 @@ import request from "supertest";
 import { CreateApp } from "../../src/app";
 import { CreateInMemoryUserRepository } from "../../src/auth/InMemoryUserRepository";
 import { CreateEventCreationController } from "../../src/events/EventCreationController";
-import { CreateEventCreationService } from "../../src/events/EventCreationService";
+import {
+  CreateEventCreationService,
+  type IEventCreationService,
+} from "../../src/events/EventCreationService";
 import { CreateEventDetailController } from "../../src/events/EventDetailController";
-import { CreateEventDetailService } from "../../src/events/EventDetailService";
+import {
+  CreateEventDetailService,
+  type IEventDetailService,
+} from "../../src/events/EventDetailService";
 import type { IHomeController } from "../../src/home/HomeController";
 import { CreateInMemoryHomeContentRepository } from "../../src/home/InMemoryHomeRepository";
 import type { IHomeContentRepository } from "../../src/home/HomeRepository";
@@ -105,20 +111,28 @@ const rsvpDashboardController: IRsvpDashboardController = {
   }),
 };
 
-export function createEventAppHarness(): {
+type EventAppHarnessOptions = {
+  contentRepository?: IHomeContentRepository;
+  eventCreationService?: IEventCreationService;
+  eventDetailService?: IEventDetailService;
+};
+
+export function createEventAppHarness(options: EventAppHarnessOptions = {}): {
   app: Express;
   contentRepository: IHomeContentRepository;
   logger: jest.Mocked<ILoggingService>;
 } {
   const logger = createSilentLogger();
   const userRepository = CreateInMemoryUserRepository();
-  const contentRepository = CreateInMemoryHomeContentRepository();
-  const eventCreationService = CreateEventCreationService(contentRepository);
+  const contentRepository = options.contentRepository ?? CreateInMemoryHomeContentRepository();
+  const eventCreationService =
+    options.eventCreationService ?? CreateEventCreationService(contentRepository);
   const eventCreationController = CreateEventCreationController(
     eventCreationService,
     logger,
   );
-  const eventDetailService = CreateEventDetailService(contentRepository, userRepository);
+  const eventDetailService =
+    options.eventDetailService ?? CreateEventDetailService(contentRepository, userRepository);
   const eventDetailController = CreateEventDetailController(
     eventDetailService,
     logger,
