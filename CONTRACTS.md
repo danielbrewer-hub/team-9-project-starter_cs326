@@ -92,6 +92,16 @@ Creation access:
 Draft creation:
     Successful creation always stores a new event with status "draft". organizerId,
     createdAt, and updatedAt are server-owned values derived outside the form.
+HTTP response mapping:
+    EventValidationError responses use status 400 and render the creation form with
+    field or form-level errors. EventAuthorizationError responses use status 403.
+    EventUnexpectedDependencyError responses use status 500. Non-HTMX successful
+    submissions redirect to /events/:id for the created event.
+Immediate update:
+    The creation form submits with HTMX to /events, targets the form container, and
+    swaps the returned partial into that element. HTMX validation failures return
+    only the form fragment with errors. HTMX success returns only a success fragment
+    with a link to the created event detail page.
 
 Factory Helpers:
 For EventCreationController:
