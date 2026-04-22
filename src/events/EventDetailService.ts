@@ -11,7 +11,10 @@ import {
 import type { IActingUser, IEventDetailView } from "./EventTypes";
 import { canManageEvent, canViewEvent } from "./EventVisibility";
 
-type EventPermissionFlags = Pick<IEventDetailView, "canEdit" | "canCancel" | "canRsvp">;
+type EventPermissionFlags = Pick<
+  IEventDetailView,
+  "canEdit" | "canCancel" | "canViewAttendeeList" | "canRsvp"
+>;
 
 export interface IEventDetailService {
   getEventDetail(
@@ -37,9 +40,11 @@ function buildEventPermissionFlags(
   event: IEventRecord,
   actor: IActingUser,
 ): EventPermissionFlags {
+  const canManage = canManageEvent(event, actor.userId, actor.role);
   return {
-    canEdit: canManageEvent(event, actor.userId, actor.role),
-    canCancel: canManageEvent(event, actor.userId, actor.role),
+    canEdit: canManage,
+    canCancel: canManage,
+    canViewAttendeeList: canManage,
     canRsvp: actor.role === "user" && event.status === "published",
   };
 }
