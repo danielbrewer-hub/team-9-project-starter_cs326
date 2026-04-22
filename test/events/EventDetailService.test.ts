@@ -15,6 +15,21 @@ const memberActor: IActingUser = {
   role: "user",
 };
 
+const ownerActor: IActingUser = {
+  userId: "user-staff",
+  role: "staff",
+};
+
+const adminActor: IActingUser = {
+  userId: "user-admin",
+  role: "admin",
+};
+
+const otherStaffActor: IActingUser = {
+  userId: "user-other-staff",
+  role: "staff",
+};
+
 function createEvent(overrides: Partial<IEventRecord> = {}): IEventRecord {
   return {
     id: "event-published",
@@ -105,5 +120,80 @@ describe("EventDetailService", () => {
     expect(repository.findEventById).toHaveBeenCalledWith("event-published");
     expect(repository.countGoingRsvpsForEvent).toHaveBeenCalledWith("event-published");
     expect(userRepository.findById).toHaveBeenCalledWith("user-staff");
+  });
+
+  it.each(["", "   "])("returns EventNotFoundError for blank event id %p", async (eventId) => {
+    const { repository, service, userRepository } = createHarness();
+
+    const result = await service.getEventDetail(eventId, memberActor);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "EventNotFoundError",
+        message: "Event not found.",
+      });
+    }
+    expect(repository.findEventById).not.toHaveBeenCalled();
+    expect(userRepository.findById).not.toHaveBeenCalled();
+  });
+
+  it("returns EventNotFoundError when the event id is missing", async () => {
+    const { repository, service, userRepository } = createHarness();
+    repository.findEventById.mockResolvedValue(Ok(null));
+
+    const result = await service.getEventDetail("event-missing", memberActor);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "EventNotFoundError",
+        message: "Event not found.",
+      });
+    }
+    expect(repository.countGoingRsvpsForEvent).not.toHaveBeenCalled();
+    expect(userRepository.findById).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["owning organizer", ownerActor],
+    ["admin", adminActor],
+  ] as const)("shows drafts to the %s", async (_label, actor) => {
+    const { repository, service } = createHarness();
+    repository.findEventById.mockResolvedValue(
+      Ok(createEvent({ id: "event-draft", status: "draft" })),
+    );
+
+    const result = await service.getEventDetail("event-draft", actor);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.status).toBe("draft");
+      expect(result.value.canEdit).toBe(true);
+      expect(result.value.canCancel).toBe(true);
+      expect(result.value.canRsvp).toBe(false);
+    }
+  });
+
+  it.each([
+    ["member", memberActor],
+    ["non-owning staff user", otherStaffActor],
+  ] as const)("hides drafts from a %s as not found", async (_label, actor) => {
+    const { repository, service, userRepository } = createHarness();
+    repository.findEventById.mockResolvedValue(
+      Ok(createEvent({ id: "event-draft", status: "draft" })),
+    );
+
+    const result = await service.getEventDetail("event-draft", actor);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "EventNotFoundError",
+        message: "Event not found.",
+      });
+    }
+    expect(repository.countGoingRsvpsForEvent).not.toHaveBeenCalled();
+    expect(userRepository.findById).not.toHaveBeenCalled();
   });
 });
