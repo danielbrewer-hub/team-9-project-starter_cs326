@@ -96,6 +96,9 @@ const rsvpDashboardController: IRsvpDashboardController = {
   showRsvpDashboard: jest.fn(async (_req, res) => {
     res.status(200).send("rsvp dashboard");
   }),
+  renderRsvpDashboardSections: jest.fn(async (_req, res) => {
+    res.status(200).send("rsvp dashboard sections");
+  }),
   cancelRsvp: jest.fn(async (_req, res) => {
     res.status(200).send("rsvp cancelled");
   }),
@@ -329,6 +332,26 @@ describe("event RSVP toggle app layer", () => {
       expect(response.text).toContain(helperText);
       expect(response.text).toContain('hx-swap-oob="outerHTML:#event-attendance-summary"');
       expect(response.text).toContain(attendanceText);
+      expect(service.toggleRsvp).toHaveBeenCalledWith(event.id, {
+        userId: usersByRole.user.id,
+        role: "user",
+      });
+    });
+
+    it("triggers a dashboard section refresh when the dashboard submits an HTMX cancel through the toggle route", async () => {
+      const { app, service } = createHarness();
+      const event = createEvent({ rsvpStatus: "cancelled", attendeeCount: 4 });
+      service.toggleRsvp.mockResolvedValue(Ok(event));
+      const agent = await signIn(app, "user");
+
+      const response = await agent
+        .post(`/events/${event.id}/rsvp/toggle`)
+        .set("HX-Request", "true")
+        .set("HX-RSVP-Dashboard", "true")
+        .expect(204);
+
+      expect(response.headers["hx-trigger"]).toBe("rsvp-dashboard-refresh");
+      expect(response.text).toBe("");
       expect(service.toggleRsvp).toHaveBeenCalledWith(event.id, {
         userId: usersByRole.user.id,
         role: "user",
