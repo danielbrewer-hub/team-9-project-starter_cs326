@@ -324,6 +324,9 @@ In HomeRepository.ts:
 Routes:
 GET /rsvp -> rsvpDashboardController.showRsvpDashboard()
 POST /rsvp/:id/cancel -> rsvpDashboardController.cancelRsvp()
+POST /events/:id/rsvp/toggle -> eventDetailController.toggleRsvp()
+    Used by the dashboard HTMX cancel action so Feature 7 reuses the Feature 4
+    RSVP toggle route.
 
 Interfaces:
 RsvpStatus: Union type for an RSVP status:
@@ -414,6 +417,17 @@ Cancel RSVP:
     cancelRsvp verifies the RSVP belongs to the actor, rejects already-cancelled
     RSVPs, rejects RSVPs for past or cancelled events, and persists the change by
     upserting the RSVP with status "cancelled".
+Immediate update:
+    The RSVP dashboard renders its upcoming and past/cancelled sections inside
+    #rsvp-dashboard-sections. Dashboard cancel forms keep
+    /rsvp/:id/cancel as the non-HTMX fallback action, but use HTMX to post to
+    /events/:id/rsvp/toggle.
+    HTMX dashboard cancel requests identify themselves with HX-RSVP-Dashboard:
+    true. After the RSVP toggle succeeds, the server reloads the dashboard data
+    and returns the #rsvp-dashboard-sections HTML fragment with layout disabled.
+    HTMX swaps that fragment into the page so upcoming rows, past/cancelled rows,
+    counts, and empty states update without a full page reload.
+    Non-HTMX cancel requests are the fallback path and redirect back to /rsvp.
 
 Factory Helpers:
 For RsvpDashboardController:
