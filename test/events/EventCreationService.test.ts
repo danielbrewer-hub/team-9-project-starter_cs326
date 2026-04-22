@@ -5,7 +5,7 @@ import type {
   IEventRecord,
   IHomeContentRepository,
 } from "../../src/home/HomeRepository";
-import { Ok } from "../../src/lib/result";
+import { Err, Ok } from "../../src/lib/result";
 
 const staffActor: IActingUser = {
   userId: "user-staff",
@@ -119,5 +119,97 @@ describe("EventCreationService", () => {
       expect(result.value.message).toContain("required");
     }
     expect(repository.createEvent).not.toHaveBeenCalled();
+  });
+
+  it.each(["0", "-1", "2.5", "abc"])(
+    "returns a capacity validation error for %p",
+    async (capacity) => {
+      const { repository, service } = createHarness();
+
+      const result = await service.createEvent(validInput({ capacity }), staffActor);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.value).toEqual({
+          name: "EventValidationError",
+          message: "Capacity must be a positive whole number.",
+          field: "capacity",
+        });
+      }
+      expect(repository.createEvent).not.toHaveBeenCalled();
+    },
+  );
+
+  it("treats blank capacity as unlimited", async () => {
+    const { repository, service } = createHarness();
+    repository.createEvent.mockImplementation(async (input) => Ok(createEventRecord(input)));
+
+    const result = await service.createEvent(validInput({ capacity: "   " }), staffActor);
+
+    expect(result.ok).toBe(true);
+    expect(repository.createEvent).toHaveBeenCalledWith(
+      expect.not.objectContaining({ capacity: expect.any(Number) }),
+    );
+  });
+
+  it.each([
+    ["startDatetime", "", "Start time is required."],
+    ["startDatetime", "not-a-date", "Start time must be a valid date and time."],
+    ["endDatetime", "", "End time is required."],
+    ["endDatetime", "not-a-date", "End time must be a valid date and time."],
+  ] as const)(
+    "returns a datetime validation error for invalid %s value %p",
+    async (field, value, message) => {
+      const { repository, service } = createHarness();
+
+      const result = await service.createEvent(validInput({ [field]: value }), staffActor);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.value).toEqual({
+          name: "EventValidationError",
+          message,
+          field,
+        });
+      }
+      expect(repository.createEvent).not.toHaveBeenCalled();
+    },
+  );
+
+  it("requires the end time to be after the start time", async () => {
+    const { repository, service } = createHarness();
+
+    const result = await service.createEvent(
+      validInput({
+        startDatetime: "2026-05-01T15:30",
+        endDatetime: "2026-05-01T14:00",
+      }),
+      staffActor,
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "EventValidationError",
+        message: "End time must be after the start time.",
+        field: "endDatetime",
+      });
+    }
+    expect(repository.createEvent).not.toHaveBeenCalled();
+  });
+
+  it("maps repository write failures to UnexpectedDependencyError", async () => {
+    const { repository, service } = createHarness();
+    repository.createEvent.mockResolvedValue(Err(new Error("write failed")));
+
+    const result = await service.createEvent(validInput(), staffActor);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "UnexpectedDependencyError",
+        message: "write failed",
+      });
+    }
   });
 });
