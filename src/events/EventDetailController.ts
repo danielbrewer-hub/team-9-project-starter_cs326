@@ -184,7 +184,7 @@ class EventDetailController implements IEventDetailController {
       });
       }
       if (req.get("HX-Request") === "true"){
-        res.render("/partials/edit-form",{event:event.value})
+        res.render("events/partials/edit-form",{event:event.value, session:browserSession,layout:false})
       }
     }
     catch(error:any){
