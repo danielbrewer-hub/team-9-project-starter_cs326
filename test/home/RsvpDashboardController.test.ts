@@ -313,4 +313,77 @@ describe("RsvpDashboardController", () => {
       );
     });
   });
+
+  describe("renderRsvpDashboardSections", () => {
+    it("renders a 401 partial when no authenticated user is in the session", async () => {
+      const { controller, service, logger, res } = createHarness();
+      const req = createRequest();
+
+      await controller.renderRsvpDashboardSections(req, res as unknown as Response);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.render).toHaveBeenCalledWith("partials/error", {
+        message: "Please log in to continue.",
+        layout: false,
+      });
+      expect(logger.warn).toHaveBeenCalledWith("Blocked unauthenticated request to RSVP dashboard");
+      expect(service.getRsvpDashboardData).not.toHaveBeenCalled();
+    });
+
+    it.each<UserRole>(["admin", "staff"])(
+      "renders a 403 partial for authenticated %s users",
+      async (role) => {
+        const { controller, service, logger, res } = createHarness();
+        const req = createRequest(usersByRole[role]);
+
+        await controller.renderRsvpDashboardSections(req, res as unknown as Response);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(res.render).toHaveBeenCalledWith("partials/error", {
+          message: "Only users may view RSVP dashboards.",
+          layout: false,
+        });
+        expect(logger.warn).toHaveBeenCalledWith("Blocked unauthorized request to RSVP dashboard");
+        expect(service.getRsvpDashboardData).not.toHaveBeenCalled();
+      },
+    );
+
+    it("renders refreshed dashboard sections for an authenticated member", async () => {
+      const { controller, service, logger, res } = createHarness();
+      service.getRsvpDashboardData.mockResolvedValue(Ok(dashboardData));
+      const req = createRequest(usersByRole.user);
+
+      await controller.renderRsvpDashboardSections(req, res as unknown as Response);
+
+      expect(service.getRsvpDashboardData).toHaveBeenCalledWith(usersByRole.user);
+      expect(res.render).toHaveBeenCalledWith("rsvp/partials/dashboard-sections", {
+        dashboard: dashboardData,
+        layout: false,
+      });
+      expect(res.status).not.toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.stringContaining("GET /rsvp/partials/sections for Browser"),
+      );
+    });
+
+    it("renders a 500 partial when the dashboard refresh fails", async () => {
+      const { controller, service, logger, res } = createHarness();
+      service.getRsvpDashboardData.mockResolvedValue(
+        Err(dependencyError("repository unavailable")),
+      );
+      const req = createRequest(usersByRole.user);
+
+      await controller.renderRsvpDashboardSections(req, res as unknown as Response);
+
+      expect(service.getRsvpDashboardData).toHaveBeenCalledWith(usersByRole.user);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.render).toHaveBeenCalledWith("partials/error", {
+        message: "Unable to refresh the RSVP dashboard right now.",
+        layout: false,
+      });
+      expect(logger.error).toHaveBeenCalledWith(
+        "Failed to refresh RSVP dashboard: repository unavailable",
+      );
+    });
+  });
 });
