@@ -32,14 +32,14 @@ export function createComposedApp(logger?: ILoggingService): IApp {
     eventCreationService,
     resolvedLogger,
   );
+  const homeService = CreateHomeService(homeContentRepository);
+  const homeController = CreateHomeController(homeService, resolvedLogger);
+  const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
   const eventDetailService = CreateEventDetailService(homeContentRepository, authUsers);
   const eventDetailController = CreateEventDetailController(
     eventDetailService,
     resolvedLogger,
   );
-  const homeService = CreateHomeService(homeContentRepository);
-  const homeController = CreateHomeController(homeService, resolvedLogger);
-  const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
   const rsvpDashboardController = CreateRsvpDashboardController(rsvpDashboardService, resolvedLogger);
 
   return CreateApp(
