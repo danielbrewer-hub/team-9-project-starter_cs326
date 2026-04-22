@@ -1,13 +1,12 @@
 <div id="rsvp-action-area" class="mt-4 space-y-3 text-sm text-slate-600">
   <% if (event.canEdit || event.canCancel) { %>
-    
     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
       <button
-      type = "button"
-      class = "w-full rounded-lg px-4 py-2 shadow focus:outline-none"
+      
       hx-get="/events/<%=event.id%>/edit"
-      hx-target="#event-content"
-      >Edit Event</button>
+      ></button>
+      Organizer controls for editing and cancelling are reserved for
+      later Sprint features.
     </div>
   <% } %>
 
