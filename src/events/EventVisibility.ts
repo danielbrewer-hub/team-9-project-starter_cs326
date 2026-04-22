@@ -5,9 +5,9 @@ export function canManageEvent(
   event: IEventRecord,
   actorUserId: string,
   actorRole: UserRole,
-  start = new Date(event.startDatetime),
-  today = new Date()
 ): boolean {
+  const start = new Date(event.startDatetime);
+  const today = new Date();
   return ((actorRole === "admin" || event.organizerId === actorUserId) && (today < start));
 }
 
