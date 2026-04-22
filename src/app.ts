@@ -272,7 +272,7 @@ class ExpressApp implements IApp {
     // -- Event Editing & Publication/Cancellation routes (Feat 3, 5) -----
 
     this.app.get(
-      "events/:id/edit",
+      "/events/:id/edit",
       asyncHandler(async (req,res)=>{
         if(!this.requireAuthenticated(req,res)) return;
         await this.eventDetailController.showEditForm(req,res);
