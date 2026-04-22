@@ -138,6 +138,15 @@ class EventCreationController implements IEventCreationController {
 
     if (result.ok) {
       this.logger.info(`POST /events created ${result.value.id} by ${actor.id}`);
+      if (this.isHtmxRequest(req)) {
+        res.status(201).render("events/partials/create-event-success", {
+          session: browserSession,
+          event: result.value,
+          layout: false,
+        });
+        return;
+      }
+
       res.redirect(`/events/${result.value.id}`);
       return;
     }
