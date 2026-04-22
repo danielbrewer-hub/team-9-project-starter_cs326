@@ -71,15 +71,24 @@ class EventCreationController implements IEventCreationController {
       fieldErrors?: EventCreationFieldErrors;
       formError?: string | null;
       formValues?: EventCreationFormValues;
+      partial?: boolean;
       statusCode?: number;
     },
   ): void {
-    res.status(options?.statusCode ?? 200).render("events/new", {
-      session,
-      fieldErrors: options?.fieldErrors ?? {},
-      formError: options?.formError ?? null,
-      formValues: options?.formValues ?? defaultFormValues(),
-    });
+    res.status(options?.statusCode ?? 200).render(
+      options?.partial ? "events/partials/create-event-form" : "events/new",
+      {
+        session,
+        fieldErrors: options?.fieldErrors ?? {},
+        formError: options?.formError ?? null,
+        formValues: options?.formValues ?? defaultFormValues(),
+        layout: options?.partial ? false : undefined,
+      },
+    );
+  }
+
+  private isHtmxRequest(req: Request): boolean {
+    return req.get("HX-Request") === "true";
   }
 
   async showCreateEventForm(req: Request, res: Response): Promise<void> {
@@ -147,6 +156,7 @@ class EventCreationController implements IEventCreationController {
             ? null
             : error.message,
           formValues,
+          partial: this.isHtmxRequest(req),
           statusCode: 400,
         });
         return;
@@ -165,6 +175,7 @@ class EventCreationController implements IEventCreationController {
       this.renderCreateForm(res, browserSession, {
         formError: "Unable to create the event right now.",
         formValues,
+        partial: this.isHtmxRequest(req),
         statusCode: 500,
       });
     }
