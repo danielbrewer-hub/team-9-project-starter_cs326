@@ -7,6 +7,7 @@ import type { IEventCreationController } from "./events/EventCreationController"
 import type { IEventDetailController } from "./events/EventDetailController";
 import type { IHomeController } from "./home/HomeController";
 import type { IRsvpDashboardController } from "./home/RsvpDashboardController";
+import type { IEventController } from "./events/EventController";
 import {
   AuthenticationRequired,
   AuthorizationRequired,
@@ -42,6 +43,7 @@ class ExpressApp implements IApp {
     private readonly eventDetailController: IEventDetailController,
     private readonly homeController: IHomeController,
     private readonly rsvpDashboardController: IRsvpDashboardController,
+    private readonly eventController: IEventController,
     private readonly logger: ILoggingService,
   ) {
     this.app = express();
@@ -297,6 +299,17 @@ class ExpressApp implements IApp {
       }),
     );
 
+    this.app.get(
+      "/rsvp/partials/sections",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.rsvpDashboardController.renderRsvpDashboardSections(req, res);
+      }),
+    );
+
     this.app.post(
       "/rsvp/:id/cancel",
       asyncHandler(async (req, res) => {
@@ -308,11 +321,8 @@ class ExpressApp implements IApp {
       }),
     );
 
-<<<<<<< HEAD
-=======
     // ── Error handler ────────────────────────────────────────────────
 
->>>>>>> 389b1194339cb17528316af1259e627d30d52066
     this.app.use((err: unknown, _req: Request, res: Response, _next: (value?: unknown) => void) => {
       const message = err instanceof Error ? err.message : "Unexpected server error.";
       this.logger.error(message);
@@ -334,6 +344,7 @@ export function CreateApp(
   eventDetailController: IEventDetailController,
   homeController: IHomeController,
   rsvpDashboardController: IRsvpDashboardController,
+  eventController: IEventController,
   logger: ILoggingService,
 ): IApp {
   return new ExpressApp(
@@ -342,6 +353,7 @@ export function CreateApp(
     eventDetailController,
     homeController,
     rsvpDashboardController,
+    eventController,
     logger,
   );
 }
