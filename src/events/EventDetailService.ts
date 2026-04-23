@@ -26,6 +26,12 @@ export interface IEventDetailService {
     eventId: string,
     actor: IActingUser,
   ): Promise<Result<IEventDetailView, EventRsvpToggleError>>;
+
+  finalizeEdits(
+    req:Request,
+    eventId: string,
+    actor: IActingUser,
+  ):Promise<Result<IEventDetailView,EventDetailError>>;
 }
 
 function normalizeEventId(eventId: string): string | null {
@@ -184,6 +190,13 @@ class EventDetailService implements IEventDetailService {
       isRsvpPending,
       isFull,
     });
+  }
+  async finalizeEdits(req: Request,eventId: string, actor: IActingUser): Promise<Result<IEventDetailView, EventDetailError>> {
+    const inp = {
+      
+    }
+    this.contentRepository.updateEvent(eventId,)
+    
   }
 }
 
