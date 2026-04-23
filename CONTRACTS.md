@@ -85,6 +85,24 @@ EventCreationError: Union type for creation failures:
     | EventAuthorizationError
     | EventUnexpectedDependencyError;
 
+Behavior:
+Creation access:
+    The creation form and submission route require an authenticated actor.
+    Staff and admin users may create events. User accounts receive a 403 response.
+Draft creation:
+    Successful creation always stores a new event with status "draft". organizerId,
+    createdAt, and updatedAt are server-owned values derived outside the form.
+HTTP response mapping:
+    EventValidationError responses use status 400 and render the creation form with
+    field or form-level errors. EventAuthorizationError responses use status 403.
+    EventUnexpectedDependencyError responses use status 500. Non-HTMX successful
+    submissions redirect to /events/:id for the created event.
+Immediate update:
+    The creation form submits with HTMX to /events, targets the form container, and
+    swaps the returned partial into that element. HTMX validation failures return
+    only the form fragment with errors. HTMX success returns only a success fragment
+    with a link to the created event detail page.
+
 Factory Helpers:
 For EventCreationController:
     export function CreateEventCreationController(
@@ -157,6 +175,15 @@ EventDetailError: Union type for detail-page failures:
     | EventNotFoundError
     | EventUnexpectedDependencyError;
 
+Behavior:
+Detail access:
+    Published, cancelled, and past events are visible to any authenticated actor.
+    Draft events are visible only to the owning organizer and admin users.
+HTTP response mapping:
+    EventNotFoundError responses use status 404 for both missing events and hidden
+    draft events. EventUnexpectedDependencyError responses use status 500.
+    Successful requests render the event detail page.
+
 Factory Helpers:
 For EventDetailController:
     export function CreateEventDetailController(
@@ -185,6 +212,8 @@ In UserRepository.ts:
 
 
 # Feature 3 (Dan)
+Routes:
+GET /events/:id/edit -> eventDetailController.showEditForm()
 
 # Feature 4 (Isik)
 Routes:
@@ -279,10 +308,15 @@ Toggle status rules:
     available or "waitlisted" when the event is full.
 Immediate update:
     The RSVP controls render inside the #rsvp-action-area element. The RSVP form
-    posts with HTMX to /events/:id/rsvp/toggle, targets #rsvp-action-area, and
-    swaps the returned partial into that element so the button state and attendee
-    count update without a full page reload.
-    Non-HTMX requests redirect back to the event detail page.
+    uses HTMX as the default enhanced path: it posts to
+    /events/:id/rsvp/toggle, targets #rsvp-action-area, and swaps the returned
+    partial into that element so the button state updates without a full page
+    reload.
+    The server returns an HTML fragment for HTMX requests, not JSON and not a
+    full page. The fragment includes the updated RSVP action area and may include
+    out-of-band HTML for related page fragments such as the attendee count.
+    Non-HTMX requests are the fallback path and redirect back to the event detail
+    page after the RSVP state changes.
 
 Factory Helpers:
 For EventDetailController:
@@ -314,12 +348,16 @@ In HomeRepository.ts:
 # Feature 5 (Dan)
 
 # Feature 6 (Aditya)
-1)filterEvents({ category, timeframe }) - filters published events by category and timeframe, returns list of events
-2)getAllPublished() - returns all published events sorted by date
+
 # Feature 7 (Isik)
 Routes:
 GET /rsvp -> rsvpDashboardController.showRsvpDashboard()
+GET /rsvp/partials/sections -> rsvpDashboardController.renderRsvpDashboardSections()
 POST /rsvp/:id/cancel -> rsvpDashboardController.cancelRsvp()
+POST /events/:id/rsvp/toggle -> eventDetailController.toggleRsvp()
+    Used by the dashboard HTMX cancel action so Feature 7 reuses the Feature 4
+    RSVP toggle route. Dashboard-origin HTMX requests receive an HX-Trigger
+    response instead of dashboard HTML.
 
 Interfaces:
 RsvpStatus: Union type for an RSVP status:
@@ -366,6 +404,7 @@ IRsvpDashboardData: A list of RSVPs:
 IRsvpDashboardController: The controller for the dashboard:
     export interface IRsvpDashboardController {
     showRsvpDashboard(req: Request, res: Response): Promise<void>;
+    renderRsvpDashboardSections(req: Request, res: Response): Promise<void>;
     cancelRsvp(req: Request, res: Response): Promise<void>;
     }
 IRsvpDashboardService: The service for the dashboard:
@@ -388,8 +427,9 @@ RsvpDashboardError: Union type for any potential RSVP related errors:
 
 Behavior:
 Dashboard access:
-    The dashboard requires an authenticated actor. Users and admins may view it.
-    Staff organizer accounts are blocked because organizers do not attend events.
+    The dashboard requires an authenticated actor. Only users may view it.
+    Staff organizer and admin accounts are blocked because organizers do not
+    attend events.
 Dashboard grouping:
     getRsvpDashboardData loads the actor's RSVP records, resolves each RSVP's event
     with findEventById, and maps the combined data into IRsvpDashboardItem values.
@@ -402,10 +442,35 @@ Dashboard sorting:
     event appears first.
     Past and cancelled RSVPs should be sorted by event startDatetime descending
     so the most recent old or cancelled event appears first.
+Dashboard event links:
+    Upcoming RSVP items expose eventId and link to /events/:id using the same
+    event detail route and link styling as the home page event listings.
+Dashboard section fragment:
+    renderRsvpDashboardSections uses the same access rules as showRsvpDashboard.
+    It reloads the actor's dashboard data and renders only the
+    rsvp/partials/dashboard-sections fragment with layout disabled.
+    This route is used only for HTMX dashboard refreshes and does not render the
+    full RSVP dashboard page.
 Cancel RSVP:
     cancelRsvp verifies the RSVP belongs to the actor, rejects already-cancelled
     RSVPs, rejects RSVPs for past or cancelled events, and persists the change by
     upserting the RSVP with status "cancelled".
+Immediate update:
+    The RSVP dashboard renders its upcoming and past/cancelled sections inside
+    #rsvp-dashboard-sections. That section listens for the
+    rsvp-dashboard-refresh HTMX trigger and refreshes itself from
+    /rsvp/partials/sections.
+    Dashboard cancel forms keep /rsvp/:id/cancel as the non-HTMX fallback action,
+    but use HTMX to post to /events/:id/rsvp/toggle with hx-swap="none".
+    HTMX dashboard cancel requests identify themselves with HX-RSVP-Dashboard:
+    true. After the RSVP toggle succeeds, the Feature 4 route returns an
+    empty 204 response with HX-Trigger: rsvp-dashboard-refresh. HTMX then asks
+    the Feature 7 partial route for the updated #rsvp-dashboard-sections HTML
+    fragment with layout disabled.
+    HTMX swaps that refreshed section into the page so upcoming rows,
+    past/cancelled rows, counts, and empty states update without a full page
+    reload.
+    Non-HTMX cancel requests are the fallback path and redirect back to /rsvp.
 
 Factory Helpers:
 For RsvpDashboardController:
@@ -437,7 +502,5 @@ In HomeRepository.ts:
 # Feature 9 (Allen)
 
 # Feature 10 (Aditya)
-1)searchEvents({ q }) - searches published events by title, description, and location, returns matching events or InvalidSearchError if query is over 200 characters
-2)searchPublished(query) - returns published upcoming events matching the search query
 
 # Feature 12 (Allen)

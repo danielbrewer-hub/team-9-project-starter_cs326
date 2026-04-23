@@ -1,18 +1,48 @@
-<div>
-  <h1>Events</h1>
+<div class="space-y-6">
+  <h1 class="text-2xl font-bold text-slate-900">Events</h1>
 
-  <form method="GET" action="/events/search">
-    <input type="text" name="q" value="<%= searchQuery || '' %>" placeholder="Search events..." />
-    <button type="submit">Search</button>
+  <!-- Feature 10: Search form — HTMX updates only the event list on submit -->
+  <form
+    hx-get="/events/search"
+    hx-target="#event-list"
+    hx-swap="outerHTML"
+    hx-trigger="submit"
+    class="flex gap-2"
+  >
+    <input
+      type="text"
+      name="q"
+      value="<%= searchQuery || '' %>"
+      placeholder="Search events..."
+      class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+    <button
+      type="submit"
+      class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+    >
+      Search
+    </button>
     <% if (searchQuery) { %>
-      <a href="/events">Clear search</a>
+      <a href="/events" class="px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50">
+        Clear
+      </a>
     <% } %>
   </form>
 
-  <form method="GET" action="/events">
-    <label>
+  <!-- Feature 6: Filter form — HTMX updates only the event list on dropdown change or submit -->
+  <form
+    hx-get="/events"
+    hx-target="#event-list"
+    hx-swap="outerHTML"
+    hx-trigger="change, submit"
+    class="flex gap-4 flex-wrap items-center"
+  >
+    <label class="flex items-center gap-2 text-sm text-slate-700">
       Category:
-      <select name="category">
+      <select
+        name="category"
+        class="px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+      >
         <option value="">All Categories</option>
         <option value="social"       <%= category === 'social'       ? 'selected' : '' %>>Social</option>
         <option value="educational"  <%= category === 'educational'  ? 'selected' : '' %>>Educational</option>
@@ -22,41 +52,30 @@
       </select>
     </label>
 
-    <label>
+    <label class="flex items-center gap-2 text-sm text-slate-700">
       Timeframe:
-      <select name="timeframe">
+      <select
+        name="timeframe"
+        class="px-2 py-1.5 border border-slate-300 rounded-lg text-sm bg-white"
+      >
         <option value="all"          <%= timeframe === 'all'          ? 'selected' : '' %>>All Upcoming</option>
         <option value="this-week"    <%= timeframe === 'this-week'    ? 'selected' : '' %>>This Week</option>
         <option value="this-weekend" <%= timeframe === 'this-weekend' ? 'selected' : '' %>>This Weekend</option>
       </select>
     </label>
 
-    <button type="submit">Apply Filters</button>
+    <button
+      type="submit"
+      class="px-4 py-2 bg-slate-700 text-white rounded-lg text-sm font-medium hover:bg-slate-800"
+    >
+      Apply Filters
+    </button>
     <% if (category || (timeframe && timeframe !== 'all')) { %>
-      <a href="/events">Clear filters</a>
+      <a href="/events" class="px-4 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50">
+        Clear filters
+      </a>
     <% } %>
   </form>
 
-  <% if (error) { %>
-    <p style="color: red;"><%= error %></p>
-  <% } %>
-
-  <% if (events.length === 0) { %>
-    <p>No events found.</p>
-  <% } else { %>
-    <ul>
-      <% events.forEach(function(event) { %>
-        <li>
-          <strong><%= event.title %></strong>
-          <span>(<%= event.category %>)</span><br />
-          <span><%= event.location %></span><br />
-          <span><%= new Date(event.startDatetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %></span>
-          <% if (event.capacity != null) { %>
-            <span>· Capacity: <%= event.capacity %></span>
-          <% } %>
-          <p><%= event.description %></p>
-        </li>
-      <% }) %>
-    </ul>
-  <% } %>
+  <%- include('_event_list', { events: events, searchQuery: searchQuery, category: category, timeframe: timeframe, error: error }) %>
 </div>

@@ -1,0 +1,7 @@
+<p id="event-attendance-summary">
+  <% if (typeof event.capacity === "number") { %>
+    <%= event.attendeeCount %> / <%= event.capacity %> attending
+  <% } else { %>
+    <%= event.attendeeCount %> attending
+  <% } %>
+</p>
