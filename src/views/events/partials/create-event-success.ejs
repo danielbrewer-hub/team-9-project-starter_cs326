@@ -1,0 +1,28 @@
+<div
+  id="event-create-panel"
+  aria-live="polite"
+  class="mt-8 rounded-3xl border border-emerald-200 bg-emerald-50 p-6 text-emerald-950"
+>
+  <p class="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">
+    Draft Saved
+  </p>
+  <h2 class="mt-2 text-2xl font-bold"><%= event.title %></h2>
+  <p class="mt-3 text-sm leading-6">
+    This event is saved as a draft and is visible only to its organizer and admins
+    until a later publish flow makes it public.
+  </p>
+  <div class="mt-5 flex flex-wrap gap-3">
+    <a
+      href="/events/<%= event.id %>"
+      class="inline-flex items-center justify-center rounded-xl bg-emerald-900 px-4 py-3 text-sm font-semibold text-white no-underline hover:bg-emerald-800"
+    >
+      View Event Detail
+    </a>
+    <a
+      href="/events/new"
+      class="inline-flex items-center justify-center rounded-xl border border-emerald-300 px-4 py-3 text-sm font-semibold text-emerald-900 no-underline hover:bg-emerald-100"
+    >
+      Create Another Event
+    </a>
+  </div>
+</div>

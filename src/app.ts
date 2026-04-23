@@ -8,7 +8,6 @@ import type { IEventDetailController } from "./events/EventDetailController";
 import type { IHomeController } from "./home/HomeController";
 import type { IRsvpDashboardController } from "./home/RsvpDashboardController";
 import type { IEventController } from "./events/EventController";
-
 import {
   AuthenticationRequired,
   AuthorizationRequired,

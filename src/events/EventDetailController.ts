@@ -19,6 +19,15 @@ class EventDetailController implements IEventDetailController {
     private readonly service: IEventDetailService,
     private readonly logger: ILoggingService,
   ) {}
+
+  private isHtmxRequest(req: Request): boolean {
+    return req.get("HX-Request") === "true";
+  }
+
+  private isRsvpDashboardRequest(req: Request): boolean {
+    return this.isHtmxRequest(req) && req.get("HX-RSVP-Dashboard") === "true";
+  }
+
   async toggleRsvp(req: Request, res: Response): Promise<void> {
     const browserSession = recordPageView(req.session);
     const actor = this.toActor(browserSession);
@@ -48,7 +57,10 @@ class EventDetailController implements IEventDetailController {
       if (!result.ok) throw result.value;
 
       this.logger.info(`POST /events/${eventId}/rsvp/toggle by ${actor.id}`);
-      if (req.get("HX-Request") === "true") {
+      if (this.isRsvpDashboardRequest(req)) {
+        res.set("HX-Trigger", "rsvp-dashboard-refresh");
+        res.status(204).send();
+      } else if (this.isHtmxRequest(req)) {
         res.render("events/partials/rsvp-toggle-response", {
           session: browserSession,
           event: result.value,
