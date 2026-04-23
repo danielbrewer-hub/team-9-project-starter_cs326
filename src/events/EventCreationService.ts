@@ -24,6 +24,12 @@ export interface IEventCreationService {
     input: ICreateEventInput,
     actor: IActingUser,
   ): Promise<Result<IEventRecord, EventCreationError>>;
+
+   finalizeEdits(
+    req:Request,
+    eventId: string,
+    actor: IActingUser,
+  ):Promise<Result<IEventDetailView,EventDetailError>>;
 }
 
 function normalizeRequiredText(
@@ -177,6 +183,14 @@ class EventCreationService implements IEventCreationService {
 
     return Ok(createdResult.value);
   }
+
+  async finalizeEdits(req: Request,eventId: string, actor: IActingUser): Promise<Result<IEventDetailView, EventDetailError>> {
+      const inp = {
+        
+      }
+      this.contentRepository.updateEvent(,eventId,)
+      
+    }
 }
 
 export function CreateEventCreationService(
