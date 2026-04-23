@@ -182,7 +182,7 @@ class EventDetailController implements IEventDetailController {
           layout:false,
       });
       }
-      this.service.finalizeEdits(eventId,{userId:actor.id,role:actor.role});
+      this.service.finalizeEdits(req,eventId,{userId:actor.id,role:actor.role});
     }
     catch(error:any){
       if (error.name === "EventNotFoundError") {
