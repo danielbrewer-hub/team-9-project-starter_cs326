@@ -174,13 +174,15 @@ class EventDetailController implements IEventDetailController {
           message: "Only admins and the event organizer may edit events.",
           layout: false,
         });
+        return;
       }
       if(!event.value.canEdit){
         this.logger.warn(`Blocked edit attempt by ${actor.id}`)
         res.status(403).render("partials/error",{
           message: "This event cannot be edited, either you are not the event organizer, or this event has already started.",
           layout:false,
-      });
+        });
+        return;
       }
       if (req.get("HX-Request") === "true"){
         res.render("events/partials/edit-form",{event:event.value, session:browserSession,layout:false})
