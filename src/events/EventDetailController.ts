@@ -7,7 +7,6 @@ import {
 } from "../session/AppSession";
 import type { ILoggingService } from "../service/LoggingService";
 import type { IEventDetailService } from "./EventDetailService";
-import { userInfo } from "node:os";
 
 
 export interface IEventDetailController {
