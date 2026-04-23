@@ -3,6 +3,11 @@ import express, { Request, RequestHandler, Response } from "express";
 import session from "express-session";
 import Layouts from "express-ejs-layouts";
 import { IAuthController } from "./auth/AuthController";
+import type { IEventCreationController } from "./events/EventCreationController";
+import type { IEventDetailController } from "./events/EventDetailController";
+import type { IHomeController } from "./home/HomeController";
+import type { IRsvpDashboardController } from "./home/RsvpDashboardController";
+import type { IEventController } from "./events/EventController";
 import {
   AuthenticationRequired,
   AuthorizationRequired,
@@ -13,7 +18,6 @@ import {
   getAuthenticatedUser,
   isAuthenticatedSession,
   AppSessionStore,
-  recordPageView,
   touchAppSession,
 } from "./session/AppSession";
 import { ILoggingService } from "./service/LoggingService";
@@ -35,6 +39,11 @@ class ExpressApp implements IApp {
 
   constructor(
     private readonly authController: IAuthController,
+    private readonly eventCreationController: IEventCreationController,
+    private readonly eventDetailController: IEventDetailController,
+    private readonly homeController: IHomeController,
+    private readonly rsvpDashboardController: IRsvpDashboardController,
+    private readonly eventController: IEventController,
     private readonly logger: ILoggingService,
   ) {
     this.app = express();
@@ -143,30 +152,27 @@ class ExpressApp implements IApp {
       "/login",
       asyncHandler(async (req, res) => {
         const store = sessionStore(req);
-        const browserSession = recordPageView(store);
 
         if (getAuthenticatedUser(store)) {
           res.redirect("/home");
           return;
         }
 
-        await this.authController.showLogin(res, browserSession);
+        await this.authController.showLogin(req, res);
       }),
     );
 
     this.app.post(
       "/login",
       asyncHandler(async (req, res) => {
-        const email = typeof req.body.email === "string" ? req.body.email : "";
-        const password = typeof req.body.password === "string" ? req.body.password : "";
-        await this.authController.loginFromForm(res, email, password, sessionStore(req));
+        await this.authController.loginFromForm(req, res);
       }),
     );
 
     this.app.post(
       "/logout",
       asyncHandler(async (req, res) => {
-        await this.authController.logoutFromForm(res, sessionStore(req));
+        await this.authController.logoutFromForm(req, res);
       }),
     );
 
@@ -179,8 +185,7 @@ class ExpressApp implements IApp {
           return;
         }
 
-        const browserSession = recordPageView(sessionStore(req));
-        await this.authController.showAdminUsers(res, browserSession);
+        await this.authController.showAdminUsers(req, res);
       }),
     );
 
@@ -191,23 +196,7 @@ class ExpressApp implements IApp {
           return;
         }
 
-        const roleValue = typeof req.body.role === "string" ? req.body.role : "user";
-        const role: UserRole =
-          roleValue === "admin" || roleValue === "staff" || roleValue === "user"
-            ? roleValue
-            : "user";
-
-        await this.authController.createUserFromForm(
-          res,
-          {
-            email: typeof req.body.email === "string" ? req.body.email : "",
-            displayName:
-              typeof req.body.displayName === "string" ? req.body.displayName : "",
-            password: typeof req.body.password === "string" ? req.body.password : "",
-            role,
-          },
-          touchAppSession(sessionStore(req)),
-        );
+        await this.authController.createUserFromForm(req, res);
       }),
     );
 
@@ -218,27 +207,11 @@ class ExpressApp implements IApp {
           return;
         }
 
-        const session = touchAppSession(sessionStore(req));
-        const currentUser = getAuthenticatedUser(sessionStore(req));
-        if (!currentUser) {
-          res.status(401).render("partials/error", {
-            message: AuthenticationRequired("Please log in to continue.").message,
-            layout: false,
-          });
-          return;
-        }
-
-        await this.authController.deleteUserFromForm(
-          res,
-          typeof req.params.id === "string" ? req.params.id : "",
-          currentUser.userId,
-          session,
-        );
+        await this.authController.deleteUserFromForm(req, res);
       }),
     );
 
     // ── Authenticated home page ──────────────────────────────────────
-    // TODO: Replace this placeholder with your project's main page.
 
     this.app.get(
       "/home",
@@ -247,9 +220,104 @@ class ExpressApp implements IApp {
           return;
         }
 
-        const browserSession = recordPageView(sessionStore(req));
-        this.logger.info(`GET /home for ${browserSession.browserLabel}`);
-        res.render("home", { session: browserSession, pageError: null });
+        await this.homeController.showHome(req, res);
+      }),
+    );
+
+    this.app.get(
+      "/events/new",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.eventCreationController.showCreateEventForm(req, res);
+      }),
+    );
+
+    // ── Event list + search (Feature 6 & 10) ─────────────────────────
+    // Must be registered before /events/:id so Express does not treat
+    // the literal string "search" as an event ID parameter.
+
+    this.app.get(
+      "/events",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) return;
+        await this.eventController.list(req, res);
+      }),
+    );
+
+    this.app.get(
+      "/events/search",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) return;
+        await this.eventController.search(req, res);
+      }),
+    );
+
+    this.app.post(
+      "/events",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.eventCreationController.createEventFromForm(req, res);
+      }),
+    );
+
+    this.app.get(
+      "/events/:id",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.eventDetailController.showEventDetail(req, res);
+      }),
+    );
+
+    this.app.post(
+      "/events/:id/rsvp/toggle",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.eventDetailController.toggleRsvp(req, res);
+      }),
+    );
+
+    this.app.get(
+      "/rsvp",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.rsvpDashboardController.showRsvpDashboard(req, res);
+      }),
+    );
+
+    this.app.get(
+      "/rsvp/partials/sections",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.rsvpDashboardController.renderRsvpDashboardSections(req, res);
+      }),
+    );
+
+    this.app.post(
+      "/rsvp/:id/cancel",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.rsvpDashboardController.cancelRsvp(req, res);
       }),
     );
 
@@ -263,6 +331,18 @@ class ExpressApp implements IApp {
         layout: false,
       });
     });
+  
+    // -- Event Editing & Publication/Cancellation routes (Feat 3, 5) -----
+
+    this.app.get(
+      "/events/:id/edit",
+      asyncHandler(async (req,res)=>{
+        if(!this.requireAuthenticated(req,res)) return;
+        await this.eventDetailController.showEditForm(req,res);
+
+    }),
+  );
+  
   }
 
   getExpressApp(): express.Express {
@@ -272,7 +352,20 @@ class ExpressApp implements IApp {
 
 export function CreateApp(
   authController: IAuthController,
+  eventCreationController: IEventCreationController,
+  eventDetailController: IEventDetailController,
+  homeController: IHomeController,
+  rsvpDashboardController: IRsvpDashboardController,
+  eventController: IEventController,
   logger: ILoggingService,
 ): IApp {
-  return new ExpressApp(authController, logger);
+  return new ExpressApp(
+    authController,
+    eventCreationController,
+    eventDetailController,
+    homeController,
+    rsvpDashboardController,
+    eventController,
+    logger,
+  );
 }

@@ -1,0 +1,12 @@
+<section class="mb-5 p-6 border border-slate-200 rounded-2xl bg-gradient-to-b from-white to-slate-50 shadow-lg">
+  <h1 class="text-3xl font-bold text-slate-900 mb-3">Your RSVP Dashboard</h1>
+  <p class="text-slate-500">
+    Review the events you have RSVP’d to and manage any upcoming attendance without leaving this page.
+  </p>
+</section>
+
+<% if (pageError) { %>
+  <%- include("partials/error", { message: pageError }) %>
+<% } %>
+
+<%- include("rsvp/partials/dashboard-sections", { dashboard }) %>
