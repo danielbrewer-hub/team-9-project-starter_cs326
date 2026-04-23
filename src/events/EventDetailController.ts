@@ -159,7 +159,7 @@ class EventDetailController implements IEventDetailController {
     const eventId = typeof req.params.id === "string" ? req.params.id : "";
     
     if (!actor) {
-      this.logger.warn("Blocked unauthenticated RSVP toggle request");
+      this.logger.warn("Blocked unauthenticated edit request");
       res.status(401).render("partials/error", {
         message: AuthenticationRequired("Please log in to continue.").message,
         layout: false,
