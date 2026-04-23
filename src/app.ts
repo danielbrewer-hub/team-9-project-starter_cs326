@@ -8,6 +8,7 @@ import type { IEventDetailController } from "./events/EventDetailController";
 import type { IHomeController } from "./home/HomeController";
 import type { IRsvpDashboardController } from "./home/RsvpDashboardController";
 import type { IEventController } from "./events/EventController";
+
 import {
   AuthenticationRequired,
   AuthorizationRequired,
@@ -296,6 +297,17 @@ class ExpressApp implements IApp {
         }
 
         await this.rsvpDashboardController.showRsvpDashboard(req, res);
+      }),
+    );
+
+    this.app.get(
+      "/rsvp/partials/sections",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.rsvpDashboardController.renderRsvpDashboardSections(req, res);
       }),
     );
 
