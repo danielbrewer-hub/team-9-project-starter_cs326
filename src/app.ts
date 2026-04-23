@@ -212,7 +212,6 @@ class ExpressApp implements IApp {
     );
 
     // ── Authenticated home page ──────────────────────────────────────
-    // TODO: Replace this placeholder with your project's main page.
 
     this.app.get(
       "/home",
@@ -236,8 +235,9 @@ class ExpressApp implements IApp {
       }),
     );
 
-    // ── Event list + search must be registered before /events/:id ────────────
-    // Otherwise Express matches "search" as an event ID parameter.
+    // ── Event list + search (Feature 6 & 10) ─────────────────────────
+    // Must be registered before /events/:id so Express does not treat
+    // the literal string "search" as an event ID parameter.
 
     this.app.get(
       "/events",
