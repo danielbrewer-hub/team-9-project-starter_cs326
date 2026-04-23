@@ -6,7 +6,9 @@ export function canManageEvent(
   actorUserId: string,
   actorRole: UserRole,
 ): boolean {
-  return actorRole === "admin" || event.organizerId === actorUserId;
+  const start = new Date(event.startDatetime);
+  const today = new Date();
+  return ((actorRole === "admin" || event.organizerId === actorUserId) && (today < start));
 }
 
 export function canViewEvent(

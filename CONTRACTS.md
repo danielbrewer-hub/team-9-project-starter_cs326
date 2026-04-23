@@ -212,6 +212,8 @@ In UserRepository.ts:
 
 
 # Feature 3 (Dan)
+Routes:
+GET /events/:id/edit -> eventDetailController.showEditForm()
 
 # Feature 4 (Isik)
 Routes:
