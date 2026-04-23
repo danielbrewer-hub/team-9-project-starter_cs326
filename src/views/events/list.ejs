@@ -1,0 +1,62 @@
+<div>
+  <h1>Events</h1>
+
+  <form method="GET" action="/events/search">
+    <input type="text" name="q" value="<%= searchQuery || '' %>" placeholder="Search events..." />
+    <button type="submit">Search</button>
+    <% if (searchQuery) { %>
+      <a href="/events">Clear search</a>
+    <% } %>
+  </form>
+
+  <form method="GET" action="/events">
+    <label>
+      Category:
+      <select name="category">
+        <option value="">All Categories</option>
+        <option value="social"       <%= category === 'social'       ? 'selected' : '' %>>Social</option>
+        <option value="educational"  <%= category === 'educational'  ? 'selected' : '' %>>Educational</option>
+        <option value="volunteer"    <%= category === 'volunteer'    ? 'selected' : '' %>>Volunteer</option>
+        <option value="sports"       <%= category === 'sports'       ? 'selected' : '' %>>Sports</option>
+        <option value="arts"         <%= category === 'arts'         ? 'selected' : '' %>>Arts</option>
+      </select>
+    </label>
+
+    <label>
+      Timeframe:
+      <select name="timeframe">
+        <option value="all"          <%= timeframe === 'all'          ? 'selected' : '' %>>All Upcoming</option>
+        <option value="this-week"    <%= timeframe === 'this-week'    ? 'selected' : '' %>>This Week</option>
+        <option value="this-weekend" <%= timeframe === 'this-weekend' ? 'selected' : '' %>>This Weekend</option>
+      </select>
+    </label>
+
+    <button type="submit">Apply Filters</button>
+    <% if (category || (timeframe && timeframe !== 'all')) { %>
+      <a href="/events">Clear filters</a>
+    <% } %>
+  </form>
+
+  <% if (error) { %>
+    <p style="color: red;"><%= error %></p>
+  <% } %>
+
+  <% if (events.length === 0) { %>
+    <p>No events found.</p>
+  <% } else { %>
+    <ul>
+      <% events.forEach(function(event) { %>
+        <li>
+          <strong><%= event.title %></strong>
+          <span>(<%= event.category %>)</span><br />
+          <span><%= event.location %></span><br />
+          <span><%= new Date(event.startDatetime).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) %></span>
+          <% if (event.capacity != null) { %>
+            <span>· Capacity: <%= event.capacity %></span>
+          <% } %>
+          <p><%= event.description %></p>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</div>
