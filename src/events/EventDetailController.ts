@@ -12,6 +12,7 @@ import type { IEventDetailService } from "./EventDetailService";
 export interface IEventDetailController {
   showEventDetail(req: Request, res: Response): Promise<void>;
   toggleRsvp(req: Request, res: Response): Promise<void>;
+  finalizeEdits(req:Request,res:Response):Promise<void>;
 }
 
 class EventDetailController implements IEventDetailController {
@@ -150,6 +151,9 @@ class EventDetailController implements IEventDetailController {
         layout: false,
       });
     }
+  }
+  async finalizeEdits(req: Request, res: Response): Promise<void> {
+    
   }
 }
 
