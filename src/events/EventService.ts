@@ -1,7 +1,7 @@
 import { Ok, Err, type Result } from '../lib/result'
 import type { IHomeContentRepository, IEventRecord } from '../home/HomeRepository'
-import type { EventCategory, Timeframe } from './Event'
-import { VALID_CATEGORIES, VALID_TIMEFRAMES } from './Event'
+import type { EventCategory, Timeframe } from './EventFilters'
+import { VALID_CATEGORIES, VALID_TIMEFRAMES } from './EventFilters'
 
 export interface InvalidSearchError {
   name: 'InvalidSearchError'
