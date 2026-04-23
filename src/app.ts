@@ -7,6 +7,7 @@ import type { IEventCreationController } from "./events/EventCreationController"
 import type { IEventDetailController } from "./events/EventDetailController";
 import type { IHomeController } from "./home/HomeController";
 import type { IRsvpDashboardController } from "./home/RsvpDashboardController";
+import type { IEventController } from "./events/EventController";
 import {
   AuthenticationRequired,
   AuthorizationRequired,
@@ -42,6 +43,7 @@ class ExpressApp implements IApp {
     private readonly eventDetailController: IEventDetailController,
     private readonly homeController: IHomeController,
     private readonly rsvpDashboardController: IRsvpDashboardController,
+    private readonly eventController: IEventController,
     private readonly logger: ILoggingService,
   ) {
     this.app = express();
@@ -234,6 +236,25 @@ class ExpressApp implements IApp {
       }),
     );
 
+    // ── Event list + search must be registered before /events/:id ────────────
+    // Otherwise Express matches "search" as an event ID parameter.
+
+    this.app.get(
+      "/events",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) return;
+        await this.eventController.list(req, res);
+      }),
+    );
+
+    this.app.get(
+      "/events/search",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) return;
+        await this.eventController.search(req, res);
+      }),
+    );
+
     this.app.post(
       "/events",
       asyncHandler(async (req, res) => {
@@ -323,6 +344,7 @@ export function CreateApp(
   eventDetailController: IEventDetailController,
   homeController: IHomeController,
   rsvpDashboardController: IRsvpDashboardController,
+  eventController: IEventController,
   logger: ILoggingService,
 ): IApp {
   return new ExpressApp(
@@ -331,6 +353,7 @@ export function CreateApp(
     eventDetailController,
     homeController,
     rsvpDashboardController,
+    eventController,
     logger,
   );
 }

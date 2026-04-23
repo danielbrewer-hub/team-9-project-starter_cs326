@@ -6,6 +6,7 @@ import type { UserRole } from "../../src/auth/User";
 import type { IEventCreationController } from "../../src/events/EventCreationController";
 import type { IEventDetailController } from "../../src/events/EventDetailController";
 import type { IHomeController } from "../../src/home/HomeController";
+import type { IEventController } from "../../src/events/EventController";
 import { CreateRsvpDashboardController } from "../../src/home/RsvpDashboardController";
 import type {
   IRsvpDashboardData,
@@ -104,6 +105,15 @@ const homeController: IHomeController = {
   }),
 };
 
+const eventController: IEventController = {
+  list: jest.fn(async (_req, res) => {
+    res.status(200).send("event list");
+  }),
+  search: jest.fn(async (_req, res) => {
+    res.status(200).send("event search");
+  }),
+};
+
 function createServiceMock(): jest.Mocked<IRsvpDashboardService> {
   return {
     getRsvpDashboardData: jest.fn(),
@@ -120,6 +130,7 @@ function createHarness() {
     eventDetailController,
     homeController,
     rsvpDashboardController,
+    eventController,
     silentLogger,
   ).getExpressApp();
 
