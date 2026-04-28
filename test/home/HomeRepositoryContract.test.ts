@@ -1,3 +1,5 @@
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaClient } from "@prisma/client";
 import { CreateInMemoryHomeContentRepository } from "../../src/home/InMemoryHomeRepository";
 import {
   DEMO_DRAFT_EVENT_ID,
@@ -5,7 +7,18 @@ import {
   type ICreateEventInput,
   type IHomeContentRepository,
 } from "../../src/home/HomeRepository";
+import {
+  CreatePrismaHomeContentRepository,
+  seedPrismaHomeContentRepository,
+} from "../../src/home/PrismaHomeRepository";
 import type { Result } from "../../src/lib/result";
+
+type RepositoryContractSetup =
+  | IHomeContentRepository
+  | {
+      repository: IHomeContentRepository;
+      cleanup?: () => Promise<void>;
+    };
 
 function unwrapOk<T>(result: Result<T, Error>): T {
   if (!result.ok) {
@@ -51,13 +64,26 @@ function createEventInput(overrides: Partial<ICreateEventInput> = {}): ICreateEv
 
 function describeHomeRepositoryContract(
   implementationName: string,
-  createRepository: () => IHomeContentRepository,
+  createRepository: () => RepositoryContractSetup | Promise<RepositoryContractSetup>,
 ): void {
   describe(implementationName, () => {
     let repository: IHomeContentRepository;
+    let cleanup: (() => Promise<void>) | undefined;
 
-    beforeEach(() => {
-      repository = createRepository();
+    beforeEach(async () => {
+      const setup = await createRepository();
+      if ("repository" in setup) {
+        repository = setup.repository;
+        cleanup = setup.cleanup;
+        return;
+      }
+
+      repository = setup;
+      cleanup = undefined;
+    });
+
+    afterEach(async () => {
+      await cleanup?.();
     });
 
     it("seeds the demo events and initial RSVP records", async () => {
@@ -146,8 +172,11 @@ function describeHomeRepositoryContract(
     it("filters RSVP records by event and user and counts only going RSVPs", async () => {
       const eventId = uniqueId("rsvp-event");
       const otherEventId = uniqueId("other-rsvp-event");
-      const userId = uniqueId("rsvp-user");
-      const otherUserId = uniqueId("other-rsvp-user");
+      const userId = "user-reader";
+      const otherUserId = "user-staff";
+
+      unwrapOk(await repository.createEvent(createEventInput({ id: eventId })));
+      unwrapOk(await repository.createEvent(createEventInput({ id: otherEventId })));
 
       const going = unwrapOk(
         await repository.upsertRsvp({
@@ -177,7 +206,7 @@ function describeHomeRepositoryContract(
         await repository.upsertRsvp({
           id: uniqueId("rsvp"),
           eventId,
-          userId: uniqueId("cancelled-user"),
+          userId: "user-admin",
           status: "cancelled",
         }),
       );
@@ -206,7 +235,9 @@ function describeHomeRepositoryContract(
 
     it("upserts RSVPs by event and user while preserving the original record identity", async () => {
       const eventId = uniqueId("upsert-event");
-      const userId = uniqueId("upsert-user");
+      const userId = "user-admin";
+
+      unwrapOk(await repository.createEvent(createEventInput({ id: eventId })));
 
       const created = unwrapOk(
         await repository.upsertRsvp({
@@ -240,7 +271,9 @@ function describeHomeRepositoryContract(
 
     it("returns cloned RSVP records from reads and writes", async () => {
       const eventId = uniqueId("clone-rsvp-event");
-      const userId = uniqueId("clone-rsvp-user");
+      const userId = "user-admin";
+
+      unwrapOk(await repository.createEvent(createEventInput({ id: eventId })));
 
       const created = unwrapOk(
         await repository.upsertRsvp({
@@ -268,3 +301,66 @@ function describeHomeRepositoryContract(
 }
 
 describeHomeRepositoryContract("InMemoryHomeRepository", () => CreateInMemoryHomeContentRepository());
+
+async function createPrismaSchema(prisma: PrismaClient): Promise<void> {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE "User" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "email" TEXT NOT NULL UNIQUE,
+      "displayName" TEXT NOT NULL,
+      "role" TEXT NOT NULL,
+      "passwordHash" TEXT NOT NULL
+    )
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE "Event" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "title" TEXT NOT NULL,
+      "description" TEXT NOT NULL,
+      "location" TEXT NOT NULL,
+      "category" TEXT NOT NULL,
+      "status" TEXT NOT NULL,
+      "capacity" INTEGER,
+      "startDatetime" DATETIME NOT NULL,
+      "endDatetime" DATETIME NOT NULL,
+      "organizerId" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "Event_organizerId_fkey" FOREIGN KEY ("organizerId")
+        REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    )
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE "Rsvp" (
+      "id" TEXT NOT NULL PRIMARY KEY,
+      "eventId" TEXT NOT NULL,
+      "userId" TEXT NOT NULL,
+      "status" TEXT NOT NULL,
+      "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "Rsvp_eventId_fkey" FOREIGN KEY ("eventId")
+        REFERENCES "Event" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+      CONSTRAINT "Rsvp_userId_fkey" FOREIGN KEY ("userId")
+        REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    )
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE UNIQUE INDEX "Rsvp_eventId_userId_key" ON "Rsvp" ("eventId", "userId")
+  `);
+}
+
+async function createPrismaContractRepository(): Promise<RepositoryContractSetup> {
+  const adapter = new PrismaBetterSqlite3({ url: ":memory:" });
+  const prisma = new PrismaClient({ adapter });
+
+  await createPrismaSchema(prisma);
+  await seedPrismaHomeContentRepository(prisma);
+
+  return {
+    repository: CreatePrismaHomeContentRepository(prisma),
+    cleanup: async () => {
+      await prisma.$disconnect();
+    },
+  };
+}
+
+describeHomeRepositoryContract("PrismaHomeRepository", createPrismaContractRepository);
