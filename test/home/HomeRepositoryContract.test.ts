@@ -19,6 +19,20 @@ function uniqueId(label: string): string {
   return `repo-test-${label}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function futureEventWindow(): Pick<ICreateEventInput, "startDatetime" | "endDatetime"> {
+  const start = new Date();
+  start.setDate(start.getDate() + 1);
+  start.setHours(14, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setHours(start.getHours() + 1);
+
+  return {
+    startDatetime: start.toISOString(),
+    endDatetime: end.toISOString(),
+  };
+}
+
 function createEventInput(overrides: Partial<ICreateEventInput> = {}): ICreateEventInput {
   const id = uniqueId("event");
   return {
@@ -29,8 +43,7 @@ function createEventInput(overrides: Partial<ICreateEventInput> = {}): ICreateEv
     category: "testing",
     status: "published",
     capacity: 3,
-    startDatetime: "2026-06-01T14:00:00.000Z",
-    endDatetime: "2026-06-01T15:00:00.000Z",
+    ...futureEventWindow(),
     organizerId: "user-staff",
     ...overrides,
   };
