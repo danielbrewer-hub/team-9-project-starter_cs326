@@ -195,7 +195,7 @@ class EventCreationService implements IEventCreationService {
           return Err(EventValidationError("Contact the organizer or an admin to edit this event."))
         }
         if(!normalizedInput.ok){
-          throw normalizedInput.value.message
+          throw normalizedInput.value
         }
         
         const updateInput:IUpdateEventInput = {

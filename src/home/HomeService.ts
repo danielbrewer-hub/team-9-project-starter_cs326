@@ -77,7 +77,7 @@ class HomeService implements IHomeService {
 
     const updateResult = await this.contentRepository.updateEvent(eventId, {
       title: fields.title,
-      description: fields.body,
+      description: fields.description,
       location: fields.location,
       category: fields.category,
       ...(fields.capacity !== undefined && { capacity: fields.capacity }),
