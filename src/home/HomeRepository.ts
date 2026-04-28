@@ -71,6 +71,7 @@ export interface IHomeContentRepository {
     input: IUpdateEventInput,
   ): Promise<Result<IEventRecord | null, Error>>;
   listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>>;
+  countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>;
   listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
   upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>>;
 }
