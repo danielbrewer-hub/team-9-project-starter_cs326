@@ -191,7 +191,18 @@ class EventCreationController implements IEventCreationController {
         layout: false,
       });
     }
-    await this.service.finalizeEdits(eventId,formValues,{userId:actor.id,role:actor.role});
+    const updated = await this.service.finalizeEdits(eventId,formValues,{userId:actor.id,role:actor.role});
+    if(!updated.ok){
+      this.logger.warn(`Event could not be updated: ${updated.value}`)
+      res.status(500).render("partials/error",{
+        message: "The event could not be updated.",
+        layout:false
+      })
+    }
+    if(updated.value && updated.ok){
+    res.render(`event/${updated.value.id}`)
+    }
+    return;
   }
 }
 
