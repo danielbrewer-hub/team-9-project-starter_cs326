@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Err, Ok, type Result } from "../lib/result";
-import type { IEventRecord, IHomeContentRepository } from "../home/HomeRepository";
+import type { IEventRecord, IHomeContentRepository, IUpdateEventInput } from "../home/HomeRepository";
 import {
   EventAuthorizationError,
   EventValidationError,
@@ -26,10 +26,10 @@ export interface IEventCreationService {
   ): Promise<Result<IEventRecord, EventCreationError>>;
 
    finalizeEdits(
-    req:Request,
-    eventId: string,
+    eventID:string,
+    input:ICreateEventInput,
     actor: IActingUser,
-  ):Promise<Result<IEventDetailView,EventDetailError>>;
+  ):Promise<Result<IEventRecord,EventCreationError>>;
 }
 
 function normalizeRequiredText(
@@ -184,13 +184,37 @@ class EventCreationService implements IEventCreationService {
     return Ok(createdResult.value);
   }
 
-  async finalizeEdits(req: Request,eventId: string, actor: IActingUser): Promise<Result<IEventDetailView, EventDetailError>> {
-      const inp = {
-        
+  async finalizeEdits(eventId:string,input:ICreateEventInput, actor: IActingUser): Promise<Result<IEventRecord, EventCreationError>> {
+      const event = await this.contentRepository.findEventById(eventId);
+      const normalizedInput = normalizeCreateEventInput(input)
+      try{
+        if(!event.ok ||!event.value){
+        throw("Event Not Found")
       }
-      this.contentRepository.updateEvent(,eventId,)
-      
-    }
+        if(event.value.organizerId!==actor.userId && actor.role!== "admin"){
+          return Err(EventValidationError("Contact the organizer or an admin to edit this event."))
+        }
+        if(!normalizedInput.ok){
+          throw normalizedInput.value.message
+        }
+        
+        const updateInput:IUpdateEventInput = {
+          title:normalizedInput.value.title,
+          description:normalizedInput.value.description,
+          location:normalizedInput.value.location,
+          category:normalizedInput.value.category,
+          startDatetime:normalizedInput.value.startDatetime,
+          endDatetime:normalizedInput.value.endDatetime
+        }
+        if(input.capacity){
+          updateInput.capacity = normalizedInput.value.capacity;
+        }
+        const updated = await this.contentRepository.updateEvent(eventId,updateInput);
+      }
+      catch(error:any){
+        return Err(UnexpectedDependencyError(error));
+      }   
+  }
 }
 
 export function CreateEventCreationService(
