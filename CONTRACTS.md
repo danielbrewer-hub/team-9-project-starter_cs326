@@ -504,3 +504,100 @@ In HomeRepository.ts:
 # Feature 10 (Aditya)
 
 # Feature 12 (Allen)
+
+# Repository
+
+Prisma structure:
+The Prisma repository is a second implementation of the existing
+IHomeContentRepository interface. It must preserve the same repository return
+types and behavior as InMemoryHomeRepository.
+
+Prisma schema models:
+User:
+    id: string primary key
+    email: string unique
+    displayName: string
+    role: string
+    passwordHash: string
+
+Event:
+    id: string primary key
+    title: string
+    description: string
+    location: string
+    category: string
+    status: string
+    capacity?: number | null
+    startDatetime: DateTime
+    endDatetime: DateTime
+    organizerId: string
+    organizer: User relation
+    createdAt: DateTime
+    updatedAt: DateTime
+    rsvps: Rsvp[]
+
+Rsvp:
+    id: string primary key
+    eventId: string
+    event: Event relation
+    userId: string
+    user: User relation
+    status: string
+    createdAt: DateTime
+    Unique index on eventId and userId so one user has at most one RSVP per
+    event.
+
+Interfaces:
+PrismaHomeContentRepository: Database-backed implementation of
+IHomeContentRepository:
+    class PrismaHomeContentRepository implements IHomeContentRepository
+
+Factory Helper:
+For PrismaHomeContentRepository:
+    export function CreatePrismaHomeContentRepository(
+        prisma: PrismaClient,
+    ): IHomeContentRepository {
+        return new PrismaHomeContentRepository(prisma);
+    }
+
+Mapping:
+    Event DateTime fields are converted to ISO strings when returning
+    IEventRecord.
+    Null capacity values are returned as undefined so IEventRecord keeps
+    capacity optional.
+    RSVP DateTime fields are converted to ISO strings when returning
+    IRsvpRecord.
+    Prisma string status values are returned as EventStatus and RsvpStatus only
+    after they have been written from the existing repository input types.
+
+Behavior:
+listEvents:
+    Returns all event records as IEventRecord values.
+findEventById:
+    Returns the stored event as IEventRecord or null when the event does not
+    exist.
+createEvent:
+    Creates an event from ICreateEventInput and returns the stored IEventRecord.
+    createdAt and updatedAt are set by the database.
+updateEvent:
+    Updates the event fields from IUpdateEventInput, returns the updated
+    IEventRecord, and returns null when the event does not exist.
+listRsvpsForEvent:
+    Returns all RSVP records for the event sorted by createdAt ascending.
+countGoingRsvpsForEvent:
+    Counts only RSVP records whose status is "going".
+listRsvpsForUser:
+    Returns all RSVP records for the user sorted by createdAt ascending.
+upsertRsvp:
+    Creates or updates an RSVP record using the unique eventId and userId pair.
+    Existing RSVP records keep their original id and createdAt and update only
+    the status. New RSVP records use the input id and receive createdAt from the
+    database.
+
+Errors:
+    Database failures are returned as Err(Error) so services can map them to
+    UnexpectedDependencyError.
+
+Tests:
+    The Prisma repository should pass the HomeRepositoryContract test suite by
+    adding the Prisma factory as another implementation of IHomeContentRepository.
