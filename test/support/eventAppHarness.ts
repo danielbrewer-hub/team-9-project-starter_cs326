@@ -11,6 +11,7 @@ import {
   type IEventCreationService,
 } from "../../src/events/EventCreationService";
 import { CreateEventDetailController } from "../../src/events/EventDetailController";
+import type { IEventController } from "../../src/events/EventController";
 import {
   CreateEventDetailService,
   type IEventDetailService,
@@ -106,8 +107,20 @@ const rsvpDashboardController: IRsvpDashboardController = {
   showRsvpDashboard: jest.fn(async (_req, res) => {
     res.status(200).send("rsvp dashboard");
   }),
+  renderRsvpDashboardSections: jest.fn(async (_req, res) => {
+    res.status(200).send("rsvp dashboard sections");
+  }),
   cancelRsvp: jest.fn(async (_req, res) => {
     res.status(200).send("rsvp cancelled");
+  }),
+};
+
+const eventController: IEventController = {
+  list: jest.fn(async (_req, res) => {
+    res.status(200).send("event list");
+  }),
+  search: jest.fn(async (_req, res) => {
+    res.status(200).send("event search");
   }),
 };
 
@@ -143,6 +156,7 @@ export function createEventAppHarness(options: EventAppHarnessOptions = {}): {
     eventDetailController,
     homeController,
     rsvpDashboardController,
+    eventController,
     logger,
   ).getExpressApp();
 
