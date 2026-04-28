@@ -1,0 +1,257 @@
+import { CreateInMemoryHomeContentRepository } from "../../src/home/InMemoryHomeRepository";
+import {
+  DEMO_DRAFT_EVENT_ID,
+  DEMO_PUBLISHED_EVENT_ID,
+  type ICreateEventInput,
+  type IHomeContentRepository,
+} from "../../src/home/HomeRepository";
+import type { Result } from "../../src/lib/result";
+
+function unwrapOk<T>(result: Result<T, Error>): T {
+  if (!result.ok) {
+    throw result.value;
+  }
+
+  return result.value;
+}
+
+function uniqueId(label: string): string {
+  return `repo-test-${label}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function createEventInput(overrides: Partial<ICreateEventInput> = {}): ICreateEventInput {
+  const id = uniqueId("event");
+  return {
+    id,
+    title: "Repository Layer Test Event",
+    description: "Exercises in-memory event persistence.",
+    location: "CS Building Room 204",
+    category: "testing",
+    status: "published",
+    capacity: 3,
+    startDatetime: "2026-06-01T14:00:00.000Z",
+    endDatetime: "2026-06-01T15:00:00.000Z",
+    organizerId: "user-staff",
+    ...overrides,
+  };
+}
+
+function describeHomeRepositoryContract(
+  implementationName: string,
+  createRepository: () => IHomeContentRepository,
+): void {
+  describe(implementationName, () => {
+    let repository: IHomeContentRepository;
+
+    beforeEach(() => {
+      repository = createRepository();
+    });
+
+    it("seeds the demo events and initial RSVP records", async () => {
+      const publishedEvent = unwrapOk(await repository.findEventById(DEMO_PUBLISHED_EVENT_ID));
+      const draftEvent = unwrapOk(await repository.findEventById(DEMO_DRAFT_EVENT_ID));
+      const publishedRsvps = unwrapOk(await repository.listRsvpsForEvent(DEMO_PUBLISHED_EVENT_ID));
+      const goingCount = unwrapOk(await repository.countGoingRsvpsForEvent(DEMO_PUBLISHED_EVENT_ID));
+
+      expect(publishedEvent).toMatchObject({
+        id: DEMO_PUBLISHED_EVENT_ID,
+        title: "Sprint Planning Workshop",
+        status: "published",
+      });
+      expect(draftEvent).toMatchObject({
+        id: DEMO_DRAFT_EVENT_ID,
+        title: "Project Demo Dry Run",
+        status: "draft",
+      });
+      expect(publishedRsvps).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "rsvp-1", status: "going" }),
+          expect.objectContaining({ id: "rsvp-2", status: "waitlisted" }),
+        ]),
+      );
+      expect(goingCount).toBe(1);
+    });
+
+    it("creates events with timestamps and returns cloned records", async () => {
+      const input = createEventInput();
+
+      const created = unwrapOk(await repository.createEvent(input));
+      created.title = "Mutated outside the repository";
+
+      const found = unwrapOk(await repository.findEventById(input.id));
+      const listed = unwrapOk(await repository.listEvents()).find((event) => event.id === input.id);
+      if (!listed) {
+        throw new Error("Created event was not returned by listEvents.");
+      }
+      listed.location = "Mutated list result";
+
+      const foundAgain = unwrapOk(await repository.findEventById(input.id));
+
+      expect(found).toMatchObject({
+        ...input,
+        title: "Repository Layer Test Event",
+      });
+      expect(Date.parse(found?.createdAt ?? "")).not.toBeNaN();
+      expect(found?.createdAt).toBe(found?.updatedAt);
+      expect(foundAgain?.location).toBe(input.location);
+    });
+
+    it("updates existing events while preserving unchanged fields", async () => {
+      const input = createEventInput({ capacity: 8 });
+      const created = unwrapOk(await repository.createEvent(input));
+
+      const updated = unwrapOk(
+        await repository.updateEvent(input.id, {
+          title: "Updated Repository Event",
+          capacity: 12,
+          status: "cancelled",
+        }),
+      );
+
+      expect(updated).toMatchObject({
+        id: input.id,
+        title: "Updated Repository Event",
+        description: input.description,
+        location: input.location,
+        capacity: 12,
+        status: "cancelled",
+        createdAt: created.createdAt,
+      });
+      expect(Date.parse(updated?.updatedAt ?? "")).not.toBeNaN();
+    });
+
+    it("returns null when updating or finding a missing event", async () => {
+      const missingId = uniqueId("missing-event");
+
+      const found = unwrapOk(await repository.findEventById(missingId));
+      const updated = unwrapOk(await repository.updateEvent(missingId, { title: "Nope" }));
+
+      expect(found).toBeNull();
+      expect(updated).toBeNull();
+    });
+
+    it("filters RSVP records by event and user and counts only going RSVPs", async () => {
+      const eventId = uniqueId("rsvp-event");
+      const otherEventId = uniqueId("other-rsvp-event");
+      const userId = uniqueId("rsvp-user");
+      const otherUserId = uniqueId("other-rsvp-user");
+
+      const going = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp"),
+          eventId,
+          userId,
+          status: "going",
+        }),
+      );
+      const waitlisted = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp"),
+          eventId,
+          userId: otherUserId,
+          status: "waitlisted",
+        }),
+      );
+      unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp"),
+          eventId: otherEventId,
+          userId,
+          status: "going",
+        }),
+      );
+      const cancelled = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp"),
+          eventId,
+          userId: uniqueId("cancelled-user"),
+          status: "cancelled",
+        }),
+      );
+
+      const eventRsvps = unwrapOk(await repository.listRsvpsForEvent(eventId));
+      const userRsvps = unwrapOk(await repository.listRsvpsForUser(userId));
+      const goingCount = unwrapOk(await repository.countGoingRsvpsForEvent(eventId));
+
+      expect(eventRsvps).toHaveLength(3);
+      expect(eventRsvps).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: going.id, eventId, status: "going" }),
+          expect.objectContaining({ id: waitlisted.id, eventId, status: "waitlisted" }),
+          expect.objectContaining({ id: cancelled.id, eventId, status: "cancelled" }),
+        ]),
+      );
+      expect(userRsvps).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ eventId, userId, status: "going" }),
+          expect.objectContaining({ eventId: otherEventId, userId, status: "going" }),
+        ]),
+      );
+      expect(userRsvps).toHaveLength(2);
+      expect(goingCount).toBe(1);
+    });
+
+    it("upserts RSVPs by event and user while preserving the original record identity", async () => {
+      const eventId = uniqueId("upsert-event");
+      const userId = uniqueId("upsert-user");
+
+      const created = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-original"),
+          eventId,
+          userId,
+          status: "going",
+        }),
+      );
+      const updated = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-replacement"),
+          eventId,
+          userId,
+          status: "cancelled",
+        }),
+      );
+
+      const eventRsvps = unwrapOk(await repository.listRsvpsForEvent(eventId));
+
+      expect(updated).toMatchObject({
+        id: created.id,
+        eventId,
+        userId,
+        status: "cancelled",
+        createdAt: created.createdAt,
+      });
+      expect(eventRsvps).toHaveLength(1);
+      expect(eventRsvps[0]).toMatchObject(updated);
+    });
+
+    it("returns cloned RSVP records from reads and writes", async () => {
+      const eventId = uniqueId("clone-rsvp-event");
+      const userId = uniqueId("clone-rsvp-user");
+
+      const created = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp"),
+          eventId,
+          userId,
+          status: "going",
+        }),
+      );
+      created.status = "cancelled";
+
+      const listed = unwrapOk(await repository.listRsvpsForEvent(eventId));
+      listed[0].status = "waitlisted";
+
+      const listedAgain = unwrapOk(await repository.listRsvpsForEvent(eventId));
+
+      expect(listedAgain).toHaveLength(1);
+      expect(listedAgain[0]).toMatchObject({
+        eventId,
+        userId,
+        status: "going",
+      });
+    });
+  });
+}
+
+describeHomeRepositoryContract("InMemoryHomeRepository", () => CreateInMemoryHomeContentRepository());
