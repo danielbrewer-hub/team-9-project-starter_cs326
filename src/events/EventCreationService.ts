@@ -29,7 +29,7 @@ export interface IEventCreationService {
     eventID:string,
     input:ICreateEventInput,
     actor: IActingUser,
-  ):Promise<Result<IEventRecord,EventCreationError>>;
+  ):Promise<Result<IEventRecord | null,Error>>;
 }
 
 function normalizeRequiredText(
@@ -184,7 +184,7 @@ class EventCreationService implements IEventCreationService {
     return Ok(createdResult.value);
   }
 
-  async finalizeEdits(eventId:string,input:ICreateEventInput, actor: IActingUser): Promise<Result<IEventRecord, EventCreationError>> {
+  async finalizeEdits(eventId:string,input:ICreateEventInput, actor: IActingUser): Promise<Result<IEventRecord | null,Error>> {
       const event = await this.contentRepository.findEventById(eventId);
       const normalizedInput = normalizeCreateEventInput(input)
       try{
@@ -209,7 +209,7 @@ class EventCreationService implements IEventCreationService {
         if(input.capacity){
           updateInput.capacity = normalizedInput.value.capacity;
         }
-        const updated = await this.contentRepository.updateEvent(eventId,updateInput);
+        return this.contentRepository.updateEvent(eventId,updateInput);
       }
       catch(error:any){
         return Err(UnexpectedDependencyError(error));
