@@ -13,6 +13,8 @@ import { CreateInMemoryHomeContentRepository } from "./home/InMemoryHomeReposito
 import { CreateHomeService } from "./home/HomeService";
 import { CreateRsvpDashboardController } from "./home/RsvpDashboardController";
 import { CreateRsvpDashboardService } from "./home/RsvpDashboardService";
+import { CreateEventService } from "./events/EventService";
+import { CreateEventController } from "./events/EventController";
 import type { IApp } from "./contracts";
 import { CreateLoggingService } from "./service/LoggingService";
 import type { ILoggingService } from "./service/LoggingService";
@@ -32,15 +34,17 @@ export function createComposedApp(logger?: ILoggingService): IApp {
     eventCreationService,
     resolvedLogger,
   );
+  const homeService = CreateHomeService(homeContentRepository);
+  const homeController = CreateHomeController(homeService, resolvedLogger);
+  const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
   const eventDetailService = CreateEventDetailService(homeContentRepository, authUsers);
   const eventDetailController = CreateEventDetailController(
     eventDetailService,
     resolvedLogger,
   );
-  const homeService = CreateHomeService(homeContentRepository);
-  const homeController = CreateHomeController(homeService, resolvedLogger);
-  const rsvpDashboardService = CreateRsvpDashboardService(homeContentRepository);
   const rsvpDashboardController = CreateRsvpDashboardController(rsvpDashboardService, resolvedLogger);
+  const eventService = CreateEventService(homeContentRepository);
+  const eventController = CreateEventController(eventService);
 
   return CreateApp(
     authController,
@@ -48,6 +52,7 @@ export function createComposedApp(logger?: ILoggingService): IApp {
     eventDetailController,
     homeController,
     rsvpDashboardController,
+    eventController,
     resolvedLogger,
   );
 }

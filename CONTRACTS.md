@@ -212,6 +212,8 @@ In UserRepository.ts:
 
 
 # Feature 3 (Dan)
+Routes:
+GET /events/:id/edit -> eventDetailController.showEditForm()
 
 # Feature 4 (Isik)
 Routes:
@@ -306,10 +308,15 @@ Toggle status rules:
     available or "waitlisted" when the event is full.
 Immediate update:
     The RSVP controls render inside the #rsvp-action-area element. The RSVP form
-    posts with HTMX to /events/:id/rsvp/toggle, targets #rsvp-action-area, and
-    swaps the returned partial into that element so the button state and attendee
-    count update without a full page reload.
-    Non-HTMX requests redirect back to the event detail page.
+    uses HTMX as the default enhanced path: it posts to
+    /events/:id/rsvp/toggle, targets #rsvp-action-area, and swaps the returned
+    partial into that element so the button state updates without a full page
+    reload.
+    The server returns an HTML fragment for HTMX requests, not JSON and not a
+    full page. The fragment includes the updated RSVP action area and may include
+    out-of-band HTML for related page fragments such as the attendee count.
+    Non-HTMX requests are the fallback path and redirect back to the event detail
+    page after the RSVP state changes.
 
 Factory Helpers:
 For EventDetailController:
@@ -345,7 +352,12 @@ In HomeRepository.ts:
 # Feature 7 (Isik)
 Routes:
 GET /rsvp -> rsvpDashboardController.showRsvpDashboard()
+GET /rsvp/partials/sections -> rsvpDashboardController.renderRsvpDashboardSections()
 POST /rsvp/:id/cancel -> rsvpDashboardController.cancelRsvp()
+POST /events/:id/rsvp/toggle -> eventDetailController.toggleRsvp()
+    Used by the dashboard HTMX cancel action so Feature 7 reuses the Feature 4
+    RSVP toggle route. Dashboard-origin HTMX requests receive an HX-Trigger
+    response instead of dashboard HTML.
 
 Interfaces:
 RsvpStatus: Union type for an RSVP status:
@@ -392,6 +404,7 @@ IRsvpDashboardData: A list of RSVPs:
 IRsvpDashboardController: The controller for the dashboard:
     export interface IRsvpDashboardController {
     showRsvpDashboard(req: Request, res: Response): Promise<void>;
+    renderRsvpDashboardSections(req: Request, res: Response): Promise<void>;
     cancelRsvp(req: Request, res: Response): Promise<void>;
     }
 IRsvpDashboardService: The service for the dashboard:
@@ -432,10 +445,32 @@ Dashboard sorting:
 Dashboard event links:
     Upcoming RSVP items expose eventId and link to /events/:id using the same
     event detail route and link styling as the home page event listings.
+Dashboard section fragment:
+    renderRsvpDashboardSections uses the same access rules as showRsvpDashboard.
+    It reloads the actor's dashboard data and renders only the
+    rsvp/partials/dashboard-sections fragment with layout disabled.
+    This route is used only for HTMX dashboard refreshes and does not render the
+    full RSVP dashboard page.
 Cancel RSVP:
     cancelRsvp verifies the RSVP belongs to the actor, rejects already-cancelled
     RSVPs, rejects RSVPs for past or cancelled events, and persists the change by
     upserting the RSVP with status "cancelled".
+Immediate update:
+    The RSVP dashboard renders its upcoming and past/cancelled sections inside
+    #rsvp-dashboard-sections. That section listens for the
+    rsvp-dashboard-refresh HTMX trigger and refreshes itself from
+    /rsvp/partials/sections.
+    Dashboard cancel forms keep /rsvp/:id/cancel as the non-HTMX fallback action,
+    but use HTMX to post to /events/:id/rsvp/toggle with hx-swap="none".
+    HTMX dashboard cancel requests identify themselves with HX-RSVP-Dashboard:
+    true. After the RSVP toggle succeeds, the Feature 4 route returns an
+    empty 204 response with HX-Trigger: rsvp-dashboard-refresh. HTMX then asks
+    the Feature 7 partial route for the updated #rsvp-dashboard-sections HTML
+    fragment with layout disabled.
+    HTMX swaps that refreshed section into the page so upcoming rows,
+    past/cancelled rows, counts, and empty states update without a full page
+    reload.
+    Non-HTMX cancel requests are the fallback path and redirect back to /rsvp.
 
 Factory Helpers:
 For RsvpDashboardController:

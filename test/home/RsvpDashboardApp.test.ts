@@ -6,6 +6,7 @@ import type { UserRole } from "../../src/auth/User";
 import type { IEventCreationController } from "../../src/events/EventCreationController";
 import type { IEventDetailController } from "../../src/events/EventDetailController";
 import type { IHomeController } from "../../src/home/HomeController";
+import type { IEventController } from "../../src/events/EventController";
 import { CreateRsvpDashboardController } from "../../src/home/RsvpDashboardController";
 import type {
   IRsvpDashboardData,
@@ -104,6 +105,15 @@ const homeController: IHomeController = {
   }),
 };
 
+const eventController: IEventController = {
+  list: jest.fn(async (_req, res) => {
+    res.status(200).send("event list");
+  }),
+  search: jest.fn(async (_req, res) => {
+    res.status(200).send("event search");
+  }),
+};
+
 function createServiceMock(): jest.Mocked<IRsvpDashboardService> {
   return {
     getRsvpDashboardData: jest.fn(),
@@ -120,6 +130,7 @@ function createHarness() {
     eventDetailController,
     homeController,
     rsvpDashboardController,
+    eventController,
     silentLogger,
   ).getExpressApp();
 
@@ -248,8 +259,41 @@ describe("RSVP dashboard app layer", () => {
     expect(response.text).toContain("Launch Retro");
     expect(response.text).toContain("RSVP status:");
     expect(response.text).toContain('action="/rsvp/rsvp-upcoming/cancel"');
+    expect(response.text).toContain('hx-get="/rsvp/partials/sections"');
+    expect(response.text).toContain('hx-trigger="rsvp-dashboard-refresh from:body"');
+    expect(response.text).toContain('hx-post="/events/event-upcoming/rsvp/toggle"');
+    expect(response.text).toContain('hx-swap="none"');
+    expect(response.text).toContain('hx-headers=\'{"HX-RSVP-Dashboard":"true"}\'');
     expect(response.text).toContain('href="/events/event-upcoming"');
     expect(response.text).toContain("Past");
+    expect(service.getRsvpDashboardData).toHaveBeenCalledWith(usersByRole.user);
+  });
+
+  it("renders refreshed dashboard sections for an authenticated member", async () => {
+    const { app, service } = createHarness();
+    service.getRsvpDashboardData.mockResolvedValue(Ok(populatedDashboard));
+    const agent = await signIn(app, "user");
+
+    const response = await agent.get("/rsvp/partials/sections").expect(200);
+
+    expect(response.text).toContain('id="rsvp-dashboard-sections"');
+    expect(response.text).toContain("Architecture Review");
+    expect(response.text).toContain("Launch Retro");
+    expect(response.text).not.toContain("Your RSVP Dashboard");
+    expect(service.getRsvpDashboardData).toHaveBeenCalledWith(usersByRole.user);
+  });
+
+  it("renders the partial dashboard refresh error when the sections endpoint fails", async () => {
+    const { app, service } = createHarness();
+    service.getRsvpDashboardData.mockResolvedValue(
+      Err(dependencyError("database unavailable")),
+    );
+    const agent = await signIn(app, "user");
+
+    const response = await agent.get("/rsvp/partials/sections").expect(500);
+
+    expect(response.text).toContain("Unable to refresh the RSVP dashboard right now.");
+    expect(response.text).not.toContain("database unavailable");
     expect(service.getRsvpDashboardData).toHaveBeenCalledWith(usersByRole.user);
   });
 

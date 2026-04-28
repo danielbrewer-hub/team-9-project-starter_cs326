@@ -7,6 +7,7 @@ import type { IEventCreationController } from "./events/EventCreationController"
 import type { IEventDetailController } from "./events/EventDetailController";
 import type { IHomeController } from "./home/HomeController";
 import type { IRsvpDashboardController } from "./home/RsvpDashboardController";
+import type { IEventController } from "./events/EventController";
 import {
   AuthenticationRequired,
   AuthorizationRequired,
@@ -42,6 +43,7 @@ class ExpressApp implements IApp {
     private readonly eventDetailController: IEventDetailController,
     private readonly homeController: IHomeController,
     private readonly rsvpDashboardController: IRsvpDashboardController,
+    private readonly eventController: IEventController,
     private readonly logger: ILoggingService,
   ) {
     this.app = express();
@@ -210,7 +212,6 @@ class ExpressApp implements IApp {
     );
 
     // ── Authenticated home page ──────────────────────────────────────
-    // TODO: Replace this placeholder with your project's main page.
 
     this.app.get(
       "/home",
@@ -231,6 +232,26 @@ class ExpressApp implements IApp {
         }
 
         await this.eventCreationController.showCreateEventForm(req, res);
+      }),
+    );
+
+    // ── Event list + search (Feature 6 & 10) ─────────────────────────
+    // Must be registered before /events/:id so Express does not treat
+    // the literal string "search" as an event ID parameter.
+
+    this.app.get(
+      "/events",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) return;
+        await this.eventController.list(req, res);
+      }),
+    );
+
+    this.app.get(
+      "/events/search",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) return;
+        await this.eventController.search(req, res);
       }),
     );
 
@@ -285,6 +306,17 @@ class ExpressApp implements IApp {
       }),
     );
 
+    this.app.get(
+      "/rsvp/partials/sections",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.rsvpDashboardController.renderRsvpDashboardSections(req, res);
+      }),
+    );
+
     this.app.post(
       "/rsvp/:id/cancel",
       asyncHandler(async (req, res) => {
@@ -306,6 +338,18 @@ class ExpressApp implements IApp {
         layout: false,
       });
     });
+  
+    // -- Event Editing & Publication/Cancellation routes (Feat 3, 5) -----
+
+    this.app.get(
+      "/events/:id/edit",
+      asyncHandler(async (req,res)=>{
+        if(!this.requireAuthenticated(req,res)) return;
+        await this.eventDetailController.showEditForm(req,res);
+
+    }),
+  );
+  
   }
 
   getExpressApp(): express.Express {
@@ -319,6 +363,7 @@ export function CreateApp(
   eventDetailController: IEventDetailController,
   homeController: IHomeController,
   rsvpDashboardController: IRsvpDashboardController,
+  eventController: IEventController,
   logger: ILoggingService,
 ): IApp {
   return new ExpressApp(
@@ -327,6 +372,7 @@ export function CreateApp(
     eventDetailController,
     homeController,
     rsvpDashboardController,
+    eventController,
     logger,
   );
 }
