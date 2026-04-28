@@ -107,10 +107,19 @@ function upsertStoredRsvp(input: ICreateRsvpInput, now: Date = new Date()): IRsv
   return cloneRsvp(created);
 }
 
+function daysFrom(base: Date, days: number, hour: number, minute = 0): string {
+  const date = new Date(base);
+  date.setUTCDate(date.getUTCDate() + days);
+  date.setUTCHours(hour, minute, 0, 0);
+  return date.toISOString();
+}
+
 function seedRepository(): void {
   if (events.size > 0) {
     return;
   }
+
+  const seededAt = new Date();
 
   createStoredEvent({
     id: publishedEventId,
@@ -132,8 +141,8 @@ function seedRepository(): void {
     location: "Online",
     category: "demo",
     status: "draft",
-    startDatetime: "2026-04-20T18:00:00.000Z",
-    endDatetime: "2026-04-20T19:00:00.000Z",
+    startDatetime: daysFrom(seededAt, 7, 18),
+    endDatetime: daysFrom(seededAt, 7, 19),
     organizerId: draftOrganizerId,
   });
 
