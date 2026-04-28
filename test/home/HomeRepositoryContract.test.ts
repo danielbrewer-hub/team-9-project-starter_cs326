@@ -32,7 +32,7 @@ function uniqueId(label: string): string {
   return `repo-test-${label}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-function futureEventWindow(): Pick<ICreateEventInput, "startDatetime" | "endDatetime"> {
+function futureTestEventWindow(): Pick<ICreateEventInput, "startDatetime" | "endDatetime"> {
   const start = new Date();
   start.setDate(start.getDate() + 1);
   start.setHours(14, 0, 0, 0);
@@ -56,7 +56,7 @@ function createEventInput(overrides: Partial<ICreateEventInput> = {}): ICreateEv
     category: "testing",
     status: "published",
     capacity: 3,
-    ...futureEventWindow(),
+    ...futureTestEventWindow(),
     organizerId: "user-staff",
     ...overrides,
   };
