@@ -12,7 +12,6 @@ import type { IEventDetailService } from "./EventDetailService";
 export interface IEventDetailController {
   showEventDetail(req: Request, res: Response): Promise<void>;
   toggleRsvp(req: Request, res: Response): Promise<void>;
-  finalizeEdits(req:Request,res:Response):Promise<void>;
 }
 
 class EventDetailController implements IEventDetailController {
@@ -136,55 +135,6 @@ class EventDetailController implements IEventDetailController {
     if (result.ok === false) {
       const error = result.value;
 
-      if (error.name === "EventNotFoundError") {
-        this.logger.warn(`Event detail not found for id ${eventId}`);
-        res.status(404).render("partials/error", {
-          message: error.message,
-          layout: false,
-        });
-        return;
-      }
-
-      this.logger.error(`Failed to load event detail: ${error.message}`);
-      res.status(500).render("partials/error", {
-        message: "Unable to load the event right now.",
-        layout: false,
-      });
-    }
-  }
-  async finalizeEdits(req: Request, res: Response): Promise<void> {
-    const browserSession = recordPageView(req.session);
-    const actor = this.toActor(browserSession);
-    const eventId = typeof req.params.id === "string" ? req.params.id : "";
-    
-    if (!actor) {
-      this.logger.warn("Blocked unauthenticated edit request");
-      res.status(401).render("partials/error", {
-        message: AuthenticationRequired("Please log in to continue.").message,
-        layout: false,
-      });
-      return;
-    }
-    const event = await this.service.getEventDetail(eventId,{userId:actor.id,role:actor.role})
-    try{
-      if (!event.ok) throw event.value;
-      if(actor.role == "user"){
-        this.logger.warn(`Blocked edit attempt by ${actor.id}`);
-        res.status(403).render("partials/error", {
-          message: "Only admins and the event organizer may edit events.",
-          layout: false,
-        });
-      }
-      if(!event.value.canEdit){
-        this.logger.warn(`Blocked edit attempt by ${actor.id}`)
-        res.status(403).render("partials/error",{
-          message: "This event cannot be edited, either you are not the event organizer, or this event has already started.",
-          layout:false,
-      });
-      }
-      this.service.finalizeEdits(req,eventId,{userId:actor.id,role:actor.role});
-    }
-    catch(error:any){
       if (error.name === "EventNotFoundError") {
         this.logger.warn(`Event detail not found for id ${eventId}`);
         res.status(404).render("partials/error", {
