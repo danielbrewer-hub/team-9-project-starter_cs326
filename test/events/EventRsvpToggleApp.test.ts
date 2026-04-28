@@ -4,6 +4,7 @@ import { CreateApp } from "../../src/app";
 import type { IAuthController } from "../../src/auth/AuthController";
 import type { UserRole } from "../../src/auth/User";
 import type { IEventCreationController } from "../../src/events/EventCreationController";
+import type { IEventController } from "../../src/events/EventController";
 import { CreateEventDetailController } from "../../src/events/EventDetailController";
 import type { IEventDetailService } from "../../src/events/EventDetailService";
 import type { IEventDetailView } from "../../src/events/EventTypes";
@@ -104,6 +105,15 @@ const rsvpDashboardController: IRsvpDashboardController = {
   }),
 };
 
+const eventController: IEventController = {
+  list: jest.fn(async (_req, res) => {
+    res.status(200).send("event list");
+  }),
+  search: jest.fn(async (_req, res) => {
+    res.status(200).send("event search");
+  }),
+};
+
 function createLoggerMock(): jest.Mocked<ILoggingService> {
   return {
     info: jest.fn(),
@@ -155,6 +165,7 @@ function createHarness() {
     eventDetailController,
     homeController,
     rsvpDashboardController,
+    eventController,
     logger,
   ).getExpressApp();
 
