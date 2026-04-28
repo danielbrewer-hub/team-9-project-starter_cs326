@@ -18,6 +18,7 @@ type EventCreationFormValues = Record<keyof ICreateEventInput, string>;
 export interface IEventCreationController {
   showCreateEventForm(req: Request, res: Response): Promise<void>;
   createEventFromForm(req: Request, res: Response): Promise<void>;
+  finalizeEdits(req:Request,res:Response):Promise<void>;
 }
 
 function defaultFormValues(): EventCreationFormValues {
@@ -168,6 +169,29 @@ class EventCreationController implements IEventCreationController {
         statusCode: 500,
       });
     }
+  }
+  async finalizeEdits(req: Request, res: Response): Promise<void> {
+    const browserSession = recordPageView(req.session);
+    const actor = this.toActor(browserSession);
+    const formValues = buildFormValues(req.body);
+    const eventId = typeof req.params.id === "string" ? req.params.id : "";
+    
+    if (!actor) {
+      this.logger.warn("Blocked unauthenticated edit request");
+      res.status(401).render("partials/error", {
+        message: AuthenticationRequired("Please log in to continue.").message,
+        layout: false,
+      });
+      return;
+    }
+   if(actor.role == "user"){
+     this.logger.warn(`Blocked edit attempt by ${actor.id}`);
+      res.status(403).render("partials/error", {
+        message: "Only admins and the event organizer may edit events.",
+        layout: false,
+      });
+    }
+    await this.service.finalizeEdits(eventId,formValues,{userId:actor.id,role:actor.role});
   }
 }
 
