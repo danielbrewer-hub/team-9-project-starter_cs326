@@ -249,7 +249,7 @@ class ExpressApp implements IApp {
       if(!this.requireAuthenticated(req,res)){
         return
       }
-      await this.eventDetailController.finalizeEdits(req,res)
+      await this.eventCreationController.finalizeEdits(req,res)
     }));
 
     this.app.get(
