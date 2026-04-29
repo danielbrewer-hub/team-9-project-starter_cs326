@@ -4,7 +4,7 @@ import http from "node:http";
 import https from "node:https";
 import path from "node:path";
 import type { IApp, IServer } from "./contracts";
-import { createComposedApp } from "./composition";
+import { createDatabaseComposedApp } from "./composition";
 
 export class HttpServer implements IServer {
   constructor(private readonly app: IApp) {}
@@ -40,8 +40,17 @@ export class HttpServer implements IServer {
   }
 }
 
-const port = Number(process.env.HTTPS_PORT ?? process.env.PORT ?? 3443);
-const app = createComposedApp();
-const server = new HttpServer(app);
+async function main(): Promise<void> {
+  const port = Number(process.env.HTTPS_PORT ?? process.env.PORT ?? 3443);
+  const app = await createDatabaseComposedApp();
+  const server = new HttpServer(app);
 
-server.start(port);
+  server.start(port);
+}
+
+main().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error);
+  // eslint-disable-next-line no-console
+  console.error(`Failed to start server: ${message}`);
+  process.exit(1);
+});
