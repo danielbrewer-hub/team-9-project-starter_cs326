@@ -176,6 +176,31 @@ describe("EventDetailService", () => {
   });
 
   it.each([
+    ["owning organizer", ownerActor],
+    ["admin", adminActor],
+  ] as const)("shows already-started drafts to the %s", async (_label, actor) => {
+    const { repository, service } = createHarness();
+    repository.findEventById.mockResolvedValue(
+      Ok(createEvent({
+        id: "event-past-start-draft",
+        status: "draft",
+        startDatetime: "2020-01-01T14:00:00.000Z",
+        endDatetime: "2020-01-01T15:00:00.000Z",
+      })),
+    );
+
+    const result = await service.getEventDetail("event-past-start-draft", actor);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.status).toBe("draft");
+      expect(result.value.canEdit).toBe(false);
+      expect(result.value.canCancel).toBe(false);
+      expect(result.value.canRsvp).toBe(false);
+    }
+  });
+
+  it.each([
     ["member", memberActor],
     ["non-owning staff user", otherStaffActor],
   ] as const)("hides drafts from a %s as not found", async (_label, actor) => {
