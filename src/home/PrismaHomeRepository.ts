@@ -203,44 +203,48 @@ export class PrismaHomeContentRepository implements IHomeContentRepository {
     input: ICancelGoingRsvpAndPromoteWaitlistInput,
   ): Promise<Result<ICancelGoingRsvpAndPromoteWaitlistResult, Error>> {
     try {
-      const cancelled = await this.prisma.rsvp.findFirst({
-        where: {
-          id: input.cancelledRsvpId,
-          eventId: input.eventId,
-          userId: input.cancelledUserId,
-          status: "going",
-        },
-      });
-
-      if (!cancelled) {
-        return Err(new Error("Unable to cancel RSVP because the active attendee record was not found."));
-      }
-
-      const waitlisted = await this.prisma.rsvp.findFirst({
-        where: {
-          eventId: input.eventId,
-          status: "waitlisted",
-        },
-        orderBy: { createdAt: "asc" },
-      });
-
-      const cancelledRecord = await this.prisma.rsvp.update({
-        where: { id: cancelled.id },
-        data: { status: "cancelled" },
-      });
-
-      let promotedRecord: Rsvp | null = null;
-      if (waitlisted) {
-        promotedRecord = await this.prisma.rsvp.update({
-          where: { id: waitlisted.id },
-          data: { status: "going" },
+      const result = await this.prisma.$transaction(async (tx: any) => {
+        const cancelled = await tx.rsvp.findFirst({
+          where: {
+            id: input.cancelledRsvpId,
+            eventId: input.eventId,
+            userId: input.cancelledUserId,
+            status: "going",
+          },
         });
-      }
 
-      return Ok({
-        cancelledRsvp: toRsvpRecord(cancelledRecord),
-        promotedRsvp: promotedRecord ? toRsvpRecord(promotedRecord) : null,
+        if (!cancelled) {
+          throw new Error("Unable to cancel RSVP because the active attendee record was not found.");
+        }
+
+        const waitlisted = await tx.rsvp.findFirst({
+          where: {
+            eventId: input.eventId,
+            status: "waitlisted",
+          },
+          orderBy: { createdAt: "asc" },
+        });
+
+        const cancelledRecord = await tx.rsvp.update({
+          where: { id: cancelled.id },
+          data: { status: "cancelled" },
+        });
+
+        let promotedRecord: Rsvp | null = null;
+        if (waitlisted) {
+          promotedRecord = await tx.rsvp.update({
+            where: { id: waitlisted.id },
+            data: { status: "going" },
+          });
+        }
+
+        return {
+          cancelledRsvp: toRsvpRecord(cancelledRecord),
+          promotedRsvp: promotedRecord ? toRsvpRecord(promotedRecord) : null,
+        };
       });
+
+      return Ok(result);
     } catch (error) {
       return Err(toError(error));
     }

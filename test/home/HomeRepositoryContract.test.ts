@@ -297,6 +297,91 @@ function describeHomeRepositoryContract(
         status: "going",
       });
     });
+
+    it("cancels a going RSVP and promotes the next waitlisted RSVP", async () => {
+      const eventId = uniqueId("cancel-promote-event");
+      const cancelledUserId = "user-admin";
+      const waitlistedUserId = "user-staff";
+
+      unwrapOk(await repository.createEvent(createEventInput({ id: eventId })));
+
+      const going = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-going"),
+          eventId,
+          userId: cancelledUserId,
+          status: "going",
+        }),
+      );
+      const waitlisted = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-waitlisted"),
+          eventId,
+          userId: waitlistedUserId,
+          status: "waitlisted",
+        }),
+      );
+
+      const result = unwrapOk(
+        await repository.cancelGoingRsvpAndPromoteWaitlist({
+          eventId,
+          cancelledRsvpId: going.id,
+          cancelledUserId,
+        }),
+      );
+
+      expect(result.cancelledRsvp).toMatchObject({
+        id: going.id,
+        eventId,
+        userId: cancelledUserId,
+        status: "cancelled",
+      });
+      expect(result.promotedRsvp).toMatchObject({
+        id: waitlisted.id,
+        eventId,
+        userId: waitlistedUserId,
+        status: "going",
+      });
+
+      const listed = unwrapOk(await repository.listRsvpsForEvent(eventId));
+      expect(listed).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: going.id, status: "cancelled" }),
+          expect.objectContaining({ id: waitlisted.id, status: "going" }),
+        ]),
+      );
+    });
+
+    it("cancels a going RSVP without promotion when the waitlist is empty", async () => {
+      const eventId = uniqueId("cancel-only-event");
+      const cancelledUserId = "user-admin";
+
+      unwrapOk(await repository.createEvent(createEventInput({ id: eventId })));
+      const going = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-going"),
+          eventId,
+          userId: cancelledUserId,
+          status: "going",
+        }),
+      );
+
+      const result = unwrapOk(
+        await repository.cancelGoingRsvpAndPromoteWaitlist({
+          eventId,
+          cancelledRsvpId: going.id,
+          cancelledUserId,
+        }),
+      );
+
+      expect(result.cancelledRsvp).toMatchObject({
+        id: going.id,
+        eventId,
+        userId: cancelledUserId,
+        status: "cancelled",
+      });
+      expect(result.promotedRsvp).toBeNull();
+    });
   });
 }
 
