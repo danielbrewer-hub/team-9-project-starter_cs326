@@ -31,6 +31,13 @@ export interface IRsvpRecord {
   createdAt: string;
 }
 
+/** RSVP row with attendee display name for organizer/admin attendee lists (Feature 12). */
+export interface IRsvpAttendeeRow {
+  displayName: string;
+  status: RsvpStatus;
+  createdAt: string;
+}
+
 export interface ICreateEventInput {
   id: string;
   title: string;
@@ -71,6 +78,12 @@ export interface IHomeContentRepository {
     input: IUpdateEventInput,
   ): Promise<Result<IEventRecord | null, Error>>;
   listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>>;
+  /**
+   * RSVPs for an event with each attendee's display name, ordered by RSVP createdAt ascending.
+   */
+  listRsvpsWithAttendeeDetailsForEvent(
+    eventId: string,
+  ): Promise<Result<IRsvpAttendeeRow[], Error>>;
   countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>;
   listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
   upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>>;

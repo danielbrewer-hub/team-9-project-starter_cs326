@@ -66,6 +66,7 @@ function createRepositoryMock(): jest.Mocked<IHomeContentRepository> {
     createEvent: jest.fn(),
     updateEvent: jest.fn(),
     listRsvpsForEvent: jest.fn(),
+    listRsvpsWithAttendeeDetailsForEvent: jest.fn(),
     countGoingRsvpsForEvent: jest.fn(),
     listRsvpsForUser: jest.fn(),
     upsertRsvp: jest.fn(),
@@ -111,6 +112,7 @@ describe("EventDetailService", () => {
           attendeeCount: 3,
           canEdit: false,
           canCancel: false,
+          canViewAttendeeList: false,
           canRsvp: true,
           rsvpStatus: null,
           isFull: false,
@@ -171,6 +173,7 @@ describe("EventDetailService", () => {
       expect(result.value.status).toBe("draft");
       expect(result.value.canEdit).toBe(true);
       expect(result.value.canCancel).toBe(true);
+      expect(result.value.canViewAttendeeList).toBe(true);
       expect(result.value.canRsvp).toBe(false);
     }
   });

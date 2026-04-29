@@ -288,6 +288,18 @@ class ExpressApp implements IApp {
       }),
     );
 
+    // Feature 12 — attendee list (organizer/admin); HTMX loads partial HTML
+    this.app.get(
+      "/events/:id/attendees",
+      asyncHandler(async (req, res) => {
+        if (!this.requireAuthenticated(req, res)) {
+          return;
+        }
+
+        await this.eventDetailController.showAttendeeList(req, res);
+      }),
+    );
+
     this.app.get(
       "/rsvp",
       asyncHandler(async (req, res) => {

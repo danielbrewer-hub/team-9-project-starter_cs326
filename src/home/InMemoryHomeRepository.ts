@@ -1,9 +1,11 @@
+import { DEMO_USERS } from "../auth/InMemoryUserRepository";
 import { Ok, type Result } from "../lib/result";
 import type {
   ICreateEventInput,
   ICreateRsvpInput,
   IEventRecord,
   IHomeContentRepository,
+  IRsvpAttendeeRow,
   IRsvpRecord,
   IUpdateEventInput,
 } from "./HomeRepository";
@@ -187,6 +189,19 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
 
   async listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>> {
     return Ok(listStoredRsvpsForEvent(eventId));
+  }
+
+  async listRsvpsWithAttendeeDetailsForEvent(
+    eventId: string,
+  ): Promise<Result<IRsvpAttendeeRow[], Error>> {
+    const rsvps = listStoredRsvpsForEvent(eventId);
+    const rows: IRsvpAttendeeRow[] = rsvps.map((rsvp) => ({
+      displayName:
+        DEMO_USERS.find((user) => user.id === rsvp.userId)?.displayName ?? "Unknown attendee",
+      status: rsvp.status,
+      createdAt: rsvp.createdAt,
+    }));
+    return Ok(rows);
   }
 
   async countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>> {

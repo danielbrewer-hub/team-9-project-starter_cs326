@@ -22,6 +22,7 @@ import {
   type AppSessionStore,
 } from "../../src/session/AppSession";
 import type { ILoggingService } from "../../src/service/LoggingService";
+import type { IAttendeeListService } from "../../src/events/AttendeeListService";
 
 const usersByRole: Record<UserRole, { id: string; email: string; displayName: string; role: UserRole }> = {
   admin: {
@@ -129,6 +130,12 @@ function createEventDetailServiceMock(): jest.Mocked<IEventDetailService> {
   };
 }
 
+function createAttendeeListServiceMock(): jest.Mocked<IAttendeeListService> {
+  return {
+    getAttendeeList: jest.fn(),
+  };
+}
+
 function createEvent(overrides: Partial<IEventDetailView> = {}): IEventDetailView {
   return {
     id: "event-rsvp-toggle",
@@ -147,6 +154,7 @@ function createEvent(overrides: Partial<IEventDetailView> = {}): IEventDetailVie
     attendeeCount: 4,
     canEdit: false,
     canCancel: false,
+    canViewAttendeeList: false,
     canRsvp: true,
     rsvpStatus: null,
     isRsvpPending: false,
@@ -158,7 +166,8 @@ function createEvent(overrides: Partial<IEventDetailView> = {}): IEventDetailVie
 function createHarness() {
   const logger = createLoggerMock();
   const service = createEventDetailServiceMock();
-  const eventDetailController = CreateEventDetailController(service, logger);
+  const attendeeListService = createAttendeeListServiceMock();
+  const eventDetailController = CreateEventDetailController(service, attendeeListService, logger);
   const app = CreateApp(
     new TestAuthController(),
     eventCreationController,

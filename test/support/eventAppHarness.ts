@@ -12,6 +12,7 @@ import {
 } from "../../src/events/EventCreationService";
 import { CreateEventDetailController } from "../../src/events/EventDetailController";
 import type { IEventController } from "../../src/events/EventController";
+import { CreateAttendeeListService } from "../../src/events/AttendeeListService";
 import {
   CreateEventDetailService,
   type IEventDetailService,
@@ -146,8 +147,10 @@ export function createEventAppHarness(options: EventAppHarnessOptions = {}): {
   );
   const eventDetailService =
     options.eventDetailService ?? CreateEventDetailService(contentRepository, userRepository);
+  const attendeeListService = CreateAttendeeListService(contentRepository);
   const eventDetailController = CreateEventDetailController(
     eventDetailService,
+    attendeeListService,
     logger,
   );
   const app = CreateApp(

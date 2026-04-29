@@ -1,0 +1,51 @@
+<% const formatWhen = (iso) => new Date(iso).toLocaleString(); %>
+
+<div class="attendee-list space-y-6 text-sm text-slate-700">
+  <div>
+    <h3 class="text-base font-semibold text-slate-900">Attending</h3>
+    <% if (!grouped.attending.length) { %>
+      <p class="mt-2 text-slate-500">No one is currently marked as attending.</p>
+    <% } else { %>
+      <ul class="mt-2 space-y-2">
+        <% grouped.attending.forEach((row) => { %>
+          <li class="flex flex-wrap justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+            <span class="font-medium text-slate-900"><%= row.displayName %></span>
+            <span class="text-slate-500">RSVP’d <%= formatWhen(row.createdAt) %></span>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+
+  <div>
+    <h3 class="text-base font-semibold text-slate-900">Waitlisted</h3>
+    <% if (!grouped.waitlisted.length) { %>
+      <p class="mt-2 text-slate-500">No one is on the waitlist.</p>
+    <% } else { %>
+      <ul class="mt-2 space-y-2">
+        <% grouped.waitlisted.forEach((row) => { %>
+          <li class="flex flex-wrap justify-between gap-2 rounded-lg border border-amber-100 bg-amber-50/80 px-3 py-2">
+            <span class="font-medium text-slate-900"><%= row.displayName %></span>
+            <span class="text-slate-500">RSVP’d <%= formatWhen(row.createdAt) %></span>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+
+  <div>
+    <h3 class="text-base font-semibold text-slate-900">Cancelled</h3>
+    <% if (!grouped.cancelled.length) { %>
+      <p class="mt-2 text-slate-500">No cancelled RSVPs.</p>
+    <% } else { %>
+      <ul class="mt-2 space-y-2">
+        <% grouped.cancelled.forEach((row) => { %>
+          <li class="flex flex-wrap justify-between gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2">
+            <span class="font-medium text-slate-600"><%= row.displayName %></span>
+            <span class="text-slate-500">RSVP’d <%= formatWhen(row.createdAt) %></span>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+</div>

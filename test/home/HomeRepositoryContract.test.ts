@@ -297,6 +297,53 @@ function describeHomeRepositoryContract(
         status: "going",
       });
     });
+
+    it("lists RSVPs with attendee display names ordered by RSVP createdAt", async () => {
+      const eventId = uniqueId("attendee-rows-event");
+      unwrapOk(await repository.createEvent(createEventInput({ id: eventId })));
+
+      unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-a"),
+          eventId,
+          userId: "user-admin",
+          status: "going",
+        }),
+      );
+      unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-b"),
+          eventId,
+          userId: "user-staff",
+          status: "waitlisted",
+        }),
+      );
+      unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-c"),
+          eventId,
+          userId: "user-reader",
+          status: "cancelled",
+        }),
+      );
+
+      const rows = unwrapOk(await repository.listRsvpsWithAttendeeDetailsForEvent(eventId));
+
+      expect(rows).toHaveLength(3);
+      expect(rows).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ displayName: "Avery Admin", status: "going" }),
+          expect.objectContaining({ displayName: "Sam Staff", status: "waitlisted" }),
+          expect.objectContaining({ displayName: "Una User", status: "cancelled" }),
+        ]),
+      );
+      expect(
+        rows.every((row) => typeof row.createdAt === "string" && !Number.isNaN(Date.parse(row.createdAt))),
+      ).toBe(true);
+      for (let i = 1; i < rows.length; i++) {
+        expect(rows[i].createdAt.localeCompare(rows[i - 1].createdAt)).toBeGreaterThanOrEqual(0);
+      }
+    });
   });
 }
 

@@ -32,6 +32,7 @@ describe("event detail app layer", () => {
     expect(response.text).toContain("Avery Admin");
     expect(response.text).toContain("1 / 12 attending");
     expect(response.text).toContain("RSVP Going");
+    expect(response.text).not.toContain("Load attendee list");
   });
 
   it("returns 404 for missing event ids", async () => {
@@ -52,6 +53,7 @@ describe("event detail app layer", () => {
     expect(response.text).toContain("Project Demo Dry Run");
     expect(response.text).toContain("draft");
     expect(response.text).toContain("Organizer controls");
+    expect(response.text).toContain("Load attendee list");
   });
 
   it("renders draft event details for admins", async () => {
@@ -63,6 +65,42 @@ describe("event detail app layer", () => {
     expect(response.text).toContain("Project Demo Dry Run");
     expect(response.text).toContain("draft");
     expect(response.text).toContain("Organizer controls");
+    expect(response.text).toContain("Load attendee list");
+  });
+
+  it("shows the attendee list trigger for admins on published events they organize", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "admin");
+
+    const response = await agent.get(`/events/${DEMO_PUBLISHED_EVENT_ID}`).expect(200);
+
+    expect(response.text).toContain("Load attendee list");
+  });
+
+  it("returns grouped attendee HTML over HTMX for an authorized admin", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "admin");
+
+    const response = await agent
+      .get(`/events/${DEMO_PUBLISHED_EVENT_ID}/attendees`)
+      .set("HX-Request", "true")
+      .expect(200);
+
+    expect(response.text).toContain("Attending");
+    expect(response.text).toContain("Avery Admin");
+    expect(response.text).toContain("Waitlisted");
+    expect(response.text).toContain("Sam Staff");
+  });
+
+  it("returns 403 when a member requests the attendee list", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "user");
+
+    const response = await agent
+      .get(`/events/${DEMO_PUBLISHED_EVENT_ID}/attendees`)
+      .expect(403);
+
+    expect(response.text).toContain("Only the event organizer or an admin may view");
   });
 
   it("hides draft events from member users as not found", async () => {

@@ -21,6 +21,8 @@ export interface IEventDetailView extends IEventRecord {
   attendeeCount: number;
   canEdit: boolean;
   canCancel: boolean;
+  /** Organizer or admin may load the RSVP attendee list (Feature 12). */
+  canViewAttendeeList: boolean;
   canRsvp: boolean;
   rsvpStatus?: RsvpStatus | null;
   isRsvpPending?: boolean;

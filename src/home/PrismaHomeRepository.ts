@@ -6,6 +6,7 @@ import type {
   ICreateRsvpInput,
   IEventRecord,
   IHomeContentRepository,
+  IRsvpAttendeeRow,
   IRsvpRecord,
   IUpdateEventInput,
 } from "./HomeRepository";
@@ -145,6 +146,26 @@ export class PrismaHomeContentRepository implements IHomeContentRepository {
         orderBy: { createdAt: "asc" },
       });
       return Ok(rsvps.map(toRsvpRecord));
+    } catch (error) {
+      return Err(toError(error));
+    }
+  }
+
+  async listRsvpsWithAttendeeDetailsForEvent(
+    eventId: string,
+  ): Promise<Result<IRsvpAttendeeRow[], Error>> {
+    try {
+      const rsvps = await this.prisma.rsvp.findMany({
+        where: { eventId },
+        include: { user: true },
+        orderBy: { createdAt: "asc" },
+      });
+      const rows: IRsvpAttendeeRow[] = rsvps.map((rsvp) => ({
+        displayName: rsvp.user.displayName,
+        status: rsvp.status as IRsvpAttendeeRow["status"],
+        createdAt: rsvp.createdAt.toISOString(),
+      }));
+      return Ok(rows);
     } catch (error) {
       return Err(toError(error));
     }

@@ -63,6 +63,25 @@
           events are visible to any authenticated user.
         </p>
       </section>
+
+      <% if (event.canViewAttendeeList) { %>
+        <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-lg">
+          <h2 class="text-xl font-semibold text-slate-900">RSVP attendees</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-600">
+            Everyone who has RSVPed for this event, grouped by status.
+          </p>
+          <button
+            type="button"
+            class="mt-4 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-slate-800 focus:outline-none"
+            hx-get="/events/<%= event.id %>/attendees"
+            hx-target="#attendee-list-panel"
+            hx-swap="innerHTML"
+          >
+            Load attendee list
+          </button>
+          <div id="attendee-list-panel" class="mt-4"></div>
+        </section>
+      <% } %>
     </aside>
   </div>
 </section>

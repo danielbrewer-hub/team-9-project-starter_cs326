@@ -16,6 +16,7 @@ import {
   type AppSessionStore,
 } from "../../src/session/AppSession";
 import type { ILoggingService } from "../../src/service/LoggingService";
+import type { IAttendeeListService } from "../../src/events/AttendeeListService";
 
 const usersByRole: Record<UserRole, IAuthenticatedUser> = {
   admin: {
@@ -50,6 +51,12 @@ function createLoggerMock(): jest.Mocked<ILoggingService> {
     info: jest.fn(),
     warn: jest.fn(),
     error: jest.fn(),
+  };
+}
+
+function createAttendeeListServiceMock(): jest.Mocked<IAttendeeListService> {
+  return {
+    getAttendeeList: jest.fn(),
   };
 }
 
@@ -106,6 +113,7 @@ function createEvent(overrides: Partial<IEventDetailView> = {}): IEventDetailVie
     attendeeCount: 4,
     canEdit: false,
     canCancel: false,
+    canViewAttendeeList: false,
     canRsvp: true,
     rsvpStatus: null,
     isRsvpPending: false,
@@ -116,11 +124,12 @@ function createEvent(overrides: Partial<IEventDetailView> = {}): IEventDetailVie
 
 function createHarness() {
   const service = createServiceMock();
+  const attendeeListService = createAttendeeListServiceMock();
   const logger = createLoggerMock();
-  const controller = CreateEventDetailController(service, logger);
+  const controller = CreateEventDetailController(service, attendeeListService, logger);
   const res = createResponseMock();
 
-  return { controller, service, logger, res };
+  return { controller, service, attendeeListService, logger, res };
 }
 
 describe("EventDetailController RSVP toggle", () => {
