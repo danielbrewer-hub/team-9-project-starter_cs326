@@ -2,6 +2,8 @@ import type { Event, PrismaClient, Rsvp } from "@prisma/client";
 import { DEMO_USERS } from "../auth/InMemoryUserRepository";
 import { Err, Ok, type Result } from "../lib/result";
 import type {
+  ICancelGoingRsvpAndPromoteWaitlistInput,
+  ICancelGoingRsvpAndPromoteWaitlistResult,
   ICreateEventInput,
   ICreateRsvpInput,
   IEventRecord,
@@ -192,6 +194,53 @@ export class PrismaHomeContentRepository implements IHomeContentRepository {
       });
 
       return Ok(toRsvpRecord(rsvp));
+    } catch (error) {
+      return Err(toError(error));
+    }
+  }
+
+  async cancelGoingRsvpAndPromoteWaitlist(
+    input: ICancelGoingRsvpAndPromoteWaitlistInput,
+  ): Promise<Result<ICancelGoingRsvpAndPromoteWaitlistResult, Error>> {
+    try {
+      const cancelled = await this.prisma.rsvp.findFirst({
+        where: {
+          id: input.cancelledRsvpId,
+          eventId: input.eventId,
+          userId: input.cancelledUserId,
+          status: "going",
+        },
+      });
+
+      if (!cancelled) {
+        return Err(new Error("Unable to cancel RSVP because the active attendee record was not found."));
+      }
+
+      const waitlisted = await this.prisma.rsvp.findFirst({
+        where: {
+          eventId: input.eventId,
+          status: "waitlisted",
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const cancelledRecord = await this.prisma.rsvp.update({
+        where: { id: cancelled.id },
+        data: { status: "cancelled" },
+      });
+
+      let promotedRecord: Rsvp | null = null;
+      if (waitlisted) {
+        promotedRecord = await this.prisma.rsvp.update({
+          where: { id: waitlisted.id },
+          data: { status: "going" },
+        });
+      }
+
+      return Ok({
+        cancelledRsvp: toRsvpRecord(cancelledRecord),
+        promotedRsvp: promotedRecord ? toRsvpRecord(promotedRecord) : null,
+      });
     } catch (error) {
       return Err(toError(error));
     }

@@ -1,5 +1,7 @@
 import { Ok, type Result } from "../lib/result";
 import type {
+  ICancelGoingRsvpAndPromoteWaitlistInput,
+  ICancelGoingRsvpAndPromoteWaitlistResult,
   ICreateEventInput,
   ICreateRsvpInput,
   IEventRecord,
@@ -107,6 +109,53 @@ function upsertStoredRsvp(input: ICreateRsvpInput, now: Date = new Date()): IRsv
   return cloneRsvp(created);
 }
 
+function cancelStoredGoingRsvpAndPromoteWaitlist(
+  input: ICancelGoingRsvpAndPromoteWaitlistInput,
+): ICancelGoingRsvpAndPromoteWaitlistResult {
+  const cancelledExisting = rsvps.get(input.cancelledRsvpId);
+  if (
+    !cancelledExisting ||
+    cancelledExisting.eventId !== input.eventId ||
+    cancelledExisting.userId !== input.cancelledUserId ||
+    cancelledExisting.status !== "going"
+  ) {
+    throw new Error("Unable to cancel RSVP because the active attendee record was not found.");
+  }
+
+  const waitlisted = Array.from(rsvps.values())
+    .filter(
+      (rsvp) =>
+        rsvp.eventId === input.eventId &&
+        rsvp.status === "waitlisted" &&
+        rsvp.id !== input.cancelledRsvpId,
+    )
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+
+  const cancelled: IRsvpRecord = {
+    ...cancelledExisting,
+    status: "cancelled",
+  };
+
+  let promoted: IRsvpRecord | null = null;
+  if (waitlisted.length > 0) {
+    promoted = {
+      ...waitlisted[0],
+      status: "going",
+    };
+  }
+
+  // Apply as one unit so in-memory behavior mirrors atomic persistence semantics.
+  rsvps.set(cancelled.id, cancelled);
+  if (promoted) {
+    rsvps.set(promoted.id, promoted);
+  }
+
+  return {
+    cancelledRsvp: cloneRsvp(cancelled),
+    promotedRsvp: promoted ? cloneRsvp(promoted) : null,
+  };
+}
+
 function daysFrom(base: Date, days: number, hour: number, minute = 0): string {
   const date = new Date(base);
   date.setUTCDate(date.getUTCDate() + days);
@@ -200,6 +249,12 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
   async upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>> {
     return Ok(upsertStoredRsvp(input));
   }
+
+  async cancelGoingRsvpAndPromoteWaitlist(
+    input: ICancelGoingRsvpAndPromoteWaitlistInput,
+  ): Promise<Result<ICancelGoingRsvpAndPromoteWaitlistResult, Error>> {
+    return Ok(cancelStoredGoingRsvpAndPromoteWaitlist(input));
+  }
 }
 
 export function CreateInMemoryHomeContentRepository(): IHomeContentRepository {
@@ -213,6 +268,7 @@ export {
   listStoredEvents,
   listStoredRsvpsForEvent,
   listStoredRsvpsForUser,
+  cancelStoredGoingRsvpAndPromoteWaitlist,
   upsertStoredRsvp,
   updateStoredEvent,
 };

@@ -1,7 +1,6 @@
 import { Err, Ok, type Result } from "../lib/result";
 import type { IAuthenticatedUser } from "../auth/User";
 import type {
-  ICreateRsvpInput,
   IEventRecord,
   IRsvpRecord,
   IHomeContentRepository,
@@ -186,15 +185,27 @@ class RsvpDashboardService implements IRsvpDashboardService {
       return Err(ValidationError("Cannot cancel an RSVP for a past or cancelled event."));
     }
 
-    const upsertResult = await this.repository.upsertRsvp({
+    if (rsvp.status === "going") {
+      const cancelAndPromoteResult = await this.repository.cancelGoingRsvpAndPromoteWaitlist({
+        eventId: rsvp.eventId,
+        cancelledRsvpId: rsvp.id,
+        cancelledUserId: rsvp.userId,
+      });
+      if (cancelAndPromoteResult.ok === false) {
+        return Err(UnexpectedDependencyError(cancelAndPromoteResult.value.message));
+      }
+      return Ok(undefined);
+    }
+
+    const waitlistCancelResult = await this.repository.upsertRsvp({
       id: rsvp.id,
       eventId: rsvp.eventId,
       userId: rsvp.userId,
       status: "cancelled",
     });
 
-    if (upsertResult.ok === false) {
-      return Err(UnexpectedDependencyError(upsertResult.value.message));
+    if (waitlistCancelResult.ok === false) {
+      return Err(UnexpectedDependencyError(waitlistCancelResult.value.message));
     }
 
     return Ok(undefined);

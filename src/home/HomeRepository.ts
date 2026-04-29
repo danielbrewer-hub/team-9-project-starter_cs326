@@ -51,6 +51,17 @@ export interface ICreateRsvpInput {
   status: RsvpStatus;
 }
 
+export interface ICancelGoingRsvpAndPromoteWaitlistInput {
+  eventId: string;
+  cancelledRsvpId: string;
+  cancelledUserId: string;
+}
+
+export interface ICancelGoingRsvpAndPromoteWaitlistResult {
+  cancelledRsvp: IRsvpRecord;
+  promotedRsvp: IRsvpRecord | null;
+}
+
 export interface IUpdateEventInput {
   title?: string;
   description?: string;
@@ -74,4 +85,7 @@ export interface IHomeContentRepository {
   countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>;
   listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
   upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>>;
+  cancelGoingRsvpAndPromoteWaitlist(
+    input: ICancelGoingRsvpAndPromoteWaitlistInput,
+  ): Promise<Result<ICancelGoingRsvpAndPromoteWaitlistResult, Error>>;
 }
