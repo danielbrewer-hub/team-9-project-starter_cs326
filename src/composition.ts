@@ -1,3 +1,5 @@
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaClient } from "@prisma/client";
 import { CreateAdminUserService } from "./auth/AdminUserService";
 import { CreateAuthController } from "./auth/AuthController";
 import { CreateAuthService } from "./auth/AuthService";
@@ -10,6 +12,11 @@ import { CreateEventDetailController } from "./events/EventDetailController";
 import { CreateEventDetailService } from "./events/EventDetailService";
 import { CreateHomeController } from "./home/HomeController";
 import { CreateInMemoryHomeContentRepository } from "./home/InMemoryHomeRepository";
+import type { IHomeContentRepository } from "./home/HomeRepository";
+import {
+  CreatePrismaHomeContentRepository,
+  seedPrismaHomeContentRepository,
+} from "./home/PrismaHomeRepository";
 import { CreateHomeService } from "./home/HomeService";
 import { CreateRsvpDashboardController } from "./home/RsvpDashboardController";
 import { CreateRsvpDashboardService } from "./home/RsvpDashboardService";
@@ -19,7 +26,10 @@ import type { IApp } from "./contracts";
 import { CreateLoggingService } from "./service/LoggingService";
 import type { ILoggingService } from "./service/LoggingService";
 
-export function createComposedApp(logger?: ILoggingService): IApp {
+function createAppWithHomeContentRepository(
+  homeContentRepository: IHomeContentRepository,
+  logger?: ILoggingService,
+): IApp {
   const resolvedLogger = logger ?? CreateLoggingService();
 
   // Authentication & authorization wiring
@@ -28,7 +38,6 @@ export function createComposedApp(logger?: ILoggingService): IApp {
   const authService = CreateAuthService(authUsers, passwordHasher);
   const adminUserService = CreateAdminUserService(authUsers, passwordHasher);
   const authController = CreateAuthController(authService, adminUserService, resolvedLogger);
-  const homeContentRepository = CreateInMemoryHomeContentRepository();
   const eventCreationService = CreateEventCreationService(homeContentRepository);
   const eventCreationController = CreateEventCreationController(
     eventCreationService,
@@ -54,5 +63,27 @@ export function createComposedApp(logger?: ILoggingService): IApp {
     rsvpDashboardController,
     eventController,
     resolvedLogger,
+  );
+}
+
+export function createComposedApp(logger?: ILoggingService): IApp {
+  return createAppWithHomeContentRepository(
+    CreateInMemoryHomeContentRepository(),
+    logger,
+  );
+}
+
+export async function createDatabaseComposedApp(
+  logger?: ILoggingService,
+): Promise<IApp> {
+  const databaseUrl = process.env.DATABASE_URL ?? "file:./prisma/dev.db";
+  const adapter = new PrismaBetterSqlite3({ url: databaseUrl });
+  const prisma = new PrismaClient({ adapter });
+
+  await seedPrismaHomeContentRepository(prisma);
+
+  return createAppWithHomeContentRepository(
+    CreatePrismaHomeContentRepository(prisma),
+    logger,
   );
 }
