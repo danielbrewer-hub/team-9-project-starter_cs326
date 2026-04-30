@@ -17,6 +17,25 @@ const memberActor: IActingUser = {
   role: "user",
 };
 
+function toDatetimeLocal(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function eventWindowFromNow(daysFromNow: number): Pick<ICreateEventInput, "startDatetime" | "endDatetime"> {
+  const start = new Date();
+  start.setDate(start.getDate() + daysFromNow);
+  start.setHours(14, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setHours(15, 30, 0, 0);
+
+  return {
+    startDatetime: toDatetimeLocal(start),
+    endDatetime: toDatetimeLocal(end),
+  };
+}
+
 function validInput(overrides: Partial<ICreateEventInput> = {}): ICreateEventInput {
   return {
     title: " Planning Session ",
@@ -24,8 +43,7 @@ function validInput(overrides: Partial<ICreateEventInput> = {}): ICreateEventInp
     location: " CS Building Room 204 ",
     category: " planning ",
     capacity: "12",
-    startDatetime: "2026-05-01T14:00",
-    endDatetime: "2026-05-01T15:30",
+    ...eventWindowFromNow(1),
     ...overrides,
   };
 }
@@ -62,8 +80,9 @@ describe("EventCreationService", () => {
   it("creates a trimmed draft event owned by the acting organizer", async () => {
     const { repository, service } = createHarness();
     repository.createEvent.mockImplementation(async (input) => Ok(createEventRecord(input)));
+    const input = validInput();
 
-    const result = await service.createEvent(validInput(), staffActor);
+    const result = await service.createEvent(input, staffActor);
 
     expect(result.ok).toBe(true);
     expect(repository.createEvent).toHaveBeenCalledWith({
@@ -74,8 +93,8 @@ describe("EventCreationService", () => {
       category: "planning",
       status: "draft",
       capacity: 12,
-      startDatetime: new Date("2026-05-01T14:00").toISOString(),
-      endDatetime: new Date("2026-05-01T15:30").toISOString(),
+      startDatetime: new Date(input.startDatetime).toISOString(),
+      endDatetime: new Date(input.endDatetime).toISOString(),
       organizerId: "user-staff",
     });
     if (result.ok) {
@@ -178,11 +197,16 @@ describe("EventCreationService", () => {
 
   it("requires the end time to be after the start time", async () => {
     const { repository, service } = createHarness();
+    const start = new Date();
+    start.setDate(start.getDate() + 1);
+    start.setHours(15, 30, 0, 0);
+    const end = new Date(start);
+    end.setHours(14, 0, 0, 0);
 
     const result = await service.createEvent(
       validInput({
-        startDatetime: "2026-05-01T15:30",
-        endDatetime: "2026-05-01T14:00",
+        startDatetime: toDatetimeLocal(start),
+        endDatetime: toDatetimeLocal(end),
       }),
       staffActor,
     );
