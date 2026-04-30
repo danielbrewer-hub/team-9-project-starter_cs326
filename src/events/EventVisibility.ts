@@ -20,5 +20,5 @@ export function canViewEvent(
     return true;
   }
 
-  return canManageEvent(event, actorUserId, actorRole);
+  return actorRole === "admin" || event.organizerId === actorUserId;
 }
