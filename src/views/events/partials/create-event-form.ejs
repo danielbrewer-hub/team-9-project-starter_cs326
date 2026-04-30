@@ -11,6 +11,55 @@
     hx-post="/events"
     hx-target="#event-create-panel"
     hx-swap="outerHTML"
+    x-data="{
+      dateRangeTouched: false,
+      startDatetimeError: '',
+      dateRangeError: '',
+      currentDatetimeLocal() {
+        const now = new Date();
+        const pad = (value) => String(value).padStart(2, '0');
+        return now.getFullYear() + '-' +
+          pad(now.getMonth() + 1) + '-' +
+          pad(now.getDate()) + 'T' +
+          pad(now.getHours()) + ':' +
+          pad(now.getMinutes());
+      },
+      validateDateRange(touched = false) {
+        if (touched) {
+          this.dateRangeTouched = true;
+        }
+
+        const startInput = this.$refs.startDatetime;
+        const endInput = this.$refs.endDatetime;
+
+        if (!startInput || !endInput) {
+          return;
+        }
+
+        const now = this.currentDatetimeLocal();
+        const start = startInput.value;
+        const end = endInput.value;
+        startInput.min = now;
+        endInput.min = start;
+
+        if (start && start <= now) {
+          this.startDatetimeError = 'Start time must be in the future.';
+          startInput.setCustomValidity(this.startDatetimeError);
+        } else {
+          this.startDatetimeError = '';
+          startInput.setCustomValidity('');
+        }
+
+        if (start && end && end <= start) {
+          this.dateRangeError = 'End time must be after the start time.';
+          endInput.setCustomValidity(this.dateRangeError);
+        } else {
+          this.dateRangeError = '';
+          endInput.setCustomValidity('');
+        }
+      }
+    }"
+    x-init="$nextTick(() => validateDateRange())"
     class="mt-8 space-y-8"
   >
     <div class="grid gap-6 md:grid-cols-2">
@@ -100,13 +149,24 @@
           type="datetime-local"
           name="startDatetime"
           required
+          x-ref="startDatetime"
+          @input="validateDateRange(true)"
+          @change="validateDateRange(true)"
           aria-invalid="<%= fieldErrors?.startDatetime ? 'true' : 'false' %>"
+          data-server-invalid="<%= fieldErrors?.startDatetime ? 'true' : 'false' %>"
+          :aria-invalid="startDatetimeError ? 'true' : $el.dataset.serverInvalid"
           value="<%= formValues?.startDatetime ?? '' %>"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
         />
         <% if (fieldErrors?.startDatetime) { %>
-          <p class="mt-2 text-sm text-red-600"><%= fieldErrors.startDatetime %></p>
+          <p class="mt-2 text-sm text-red-600" x-show="!dateRangeTouched"><%= fieldErrors.startDatetime %></p>
         <% } %>
+        <p
+          x-show="dateRangeTouched && startDatetimeError"
+          x-text="startDatetimeError"
+          class="mt-2 text-sm text-red-600"
+          aria-live="polite"
+        ></p>
       </label>
 
       <label class="block">
@@ -115,13 +175,24 @@
           type="datetime-local"
           name="endDatetime"
           required
+          x-ref="endDatetime"
+          @input="validateDateRange(true)"
+          @change="validateDateRange(true)"
           aria-invalid="<%= fieldErrors?.endDatetime ? 'true' : 'false' %>"
+          data-server-invalid="<%= fieldErrors?.endDatetime ? 'true' : 'false' %>"
+          :aria-invalid="dateRangeError ? 'true' : $el.dataset.serverInvalid"
           value="<%= formValues?.endDatetime ?? '' %>"
           class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
         />
         <% if (fieldErrors?.endDatetime) { %>
-          <p class="mt-2 text-sm text-red-600"><%= fieldErrors.endDatetime %></p>
+          <p class="mt-2 text-sm text-red-600" x-show="!dateRangeTouched"><%= fieldErrors.endDatetime %></p>
         <% } %>
+        <p
+          x-show="dateRangeTouched && dateRangeError"
+          x-text="dateRangeError"
+          class="mt-2 text-sm text-red-600"
+          aria-live="polite"
+        ></p>
       </label>
     </div>
 
