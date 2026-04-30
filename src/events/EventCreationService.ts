@@ -106,6 +106,10 @@ function normalizeCreateEventInput(
     return startDatetime;
   }
 
+  if (startDatetime.value.valueOf() <= Date.now()) {
+    return Err(EventValidationError("Start time must be in the future.", "startDatetime"));
+  }
+
   const endDatetime = normalizeDatetime(input.endDatetime, "endDatetime", "End time");
   if (endDatetime.ok === false) {
     return endDatetime;
