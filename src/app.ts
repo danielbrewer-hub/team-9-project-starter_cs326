@@ -266,7 +266,7 @@ class ExpressApp implements IApp {
       }),
     );
 
-    this.app.put("/events/:id/edit/finalize",asyncHandler(async (req,res)=>{
+    this.app.put("/events/:id/edit",asyncHandler(async (req,res)=>{
       if(!this.requireAuthenticated(req,res)){
         return
       }
