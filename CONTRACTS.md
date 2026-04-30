@@ -512,6 +512,17 @@ The Prisma repository is a second implementation of the existing
 IHomeContentRepository interface. It must preserve the same repository return
 types and behavior as InMemoryHomeRepository.
 
+Environment configuration:
+HOME_REPOSITORY: Selects the HomeRepository implementation used by the running
+application:
+    "memory": Uses CreateInMemoryHomeContentRepository().
+    "prisma": Uses CreatePrismaHomeContentRepository() with DATABASE_URL.
+    Missing HOME_REPOSITORY defaults to "memory".
+    Any other value is invalid and should fail startup with a clear error.
+DATABASE_URL:
+    Used only when HOME_REPOSITORY is "prisma".
+    Points Prisma to the SQLite database file.
+
 Prisma schema models:
 User:
     id: string primary key
