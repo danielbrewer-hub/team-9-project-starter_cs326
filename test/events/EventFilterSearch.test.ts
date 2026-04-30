@@ -1,63 +1,96 @@
 import request from 'supertest'
-import { createComposedApp } from '../../src/composition'
-import { createStoredEvent } from '../../src/home/InMemoryHomeRepository'
+import { CreateApp } from '../../src/app'
+import { CreateInMemoryHomeContentRepository } from '../../src/home/InMemoryHomeRepository'
+import { CreateEventService } from '../../src/events/EventService'
+import { CreateEventController } from '../../src/events/EventController'
+import { CreateEventCreationController } from '../../src/events/EventCreationController'
+import { CreateEventCreationService } from '../../src/events/EventCreationService'
+import { CreateEventDetailController } from '../../src/events/EventDetailController'
+import { CreateEventDetailService } from '../../src/events/EventDetailService'
+import { CreateInMemoryUserRepository } from '../../src/auth/InMemoryUserRepository'
+import { EventTestAuthController, createSilentLogger } from '../support/eventAppHarness'
+import type { IHomeController } from '../../src/home/HomeController'
+import type { IRsvpDashboardController } from '../../src/home/RsvpDashboardController'
 
-// Create the app once for all tests in this file
-const appInstance = createComposedApp()
-const server = appInstance.getExpressApp()
+const contentRepository = CreateInMemoryHomeContentRepository()
+const userRepository = CreateInMemoryUserRepository()
+const logger = createSilentLogger()
+const eventService = CreateEventService(contentRepository)
+const eventController = CreateEventController(eventService)
+const eventCreationController = CreateEventCreationController(
+  CreateEventCreationService(contentRepository), logger,
+)
+const eventDetailController = CreateEventDetailController(
+  CreateEventDetailService(contentRepository, userRepository), logger,
+)
+const homeController: IHomeController = {
+  showHome: jest.fn(async (_req, res) => { res.status(200).send('home') }),
+}
+const rsvpDashboardController: IRsvpDashboardController = {
+  showRsvpDashboard: jest.fn(async (_req, res) => { res.status(200).send('rsvp') }),
+  renderRsvpDashboardSections: jest.fn(async (_req, res) => { res.status(200).send('sections') }),
+  cancelRsvp: jest.fn(async (_req, res) => { res.status(200).send('cancelled') }),
+}
+
+const server = CreateApp(
+  new EventTestAuthController(),
+  eventCreationController,
+  eventDetailController,
+  homeController,
+  rsvpDashboardController,
+  eventController,
+  logger,
+).getExpressApp()
 
 // Seed future-dated test events so they appear in filter/search results.
-// The default seeded events have past dates (April 18/20) so they are
-// automatically excluded by the service's "upcoming only" filter.
+// The default seeded events have past dates so they are automatically
+// excluded by the service's "upcoming only" filter.
 const oneDayFromNow = new Date()
 oneDayFromNow.setDate(oneDayFromNow.getDate() + 1)
 const twoDaysFromNow = new Date()
 twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2)
 
-createStoredEvent({
-  id: 'test-social-event',
-  title: 'Community Social Mixer',
-  description: 'A fun social gathering for the community',
-  location: 'Campus Center',
-  category: 'social',
-  status: 'published',
-  capacity: 50,
-  startDatetime: oneDayFromNow.toISOString(),
-  endDatetime: twoDaysFromNow.toISOString(),
-  organizerId: 'user-admin',
-})
-
-createStoredEvent({
-  id: 'test-edu-event',
-  title: 'Web Programming Workshop',
-  description: 'Learn the basics of HTML CSS and JavaScript',
-  location: 'CS Lab 101',
-  category: 'educational',
-  status: 'published',
-  startDatetime: oneDayFromNow.toISOString(),
-  endDatetime: twoDaysFromNow.toISOString(),
-  organizerId: 'user-admin',
-})
-
-createStoredEvent({
-  id: 'test-draft-event',
-  title: 'Draft Event Should Not Show',
-  description: 'This is a draft event',
-  location: 'Nowhere',
-  category: 'social',
-  status: 'draft',
-  startDatetime: oneDayFromNow.toISOString(),
-  endDatetime: twoDaysFromNow.toISOString(),
-  organizerId: 'user-admin',
+beforeAll(async () => {
+  await contentRepository.createEvent({
+    id: 'test-social-event',
+    title: 'Community Social Mixer',
+    description: 'A fun social gathering for the community',
+    location: 'Campus Center',
+    category: 'social',
+    status: 'published',
+    capacity: 50,
+    startDatetime: oneDayFromNow.toISOString(),
+    endDatetime: twoDaysFromNow.toISOString(),
+    organizerId: 'user-admin',
+  })
+  await contentRepository.createEvent({
+    id: 'test-edu-event',
+    title: 'Web Programming Workshop',
+    description: 'Learn the basics of HTML CSS and JavaScript',
+    location: 'CS Lab 101',
+    category: 'educational',
+    status: 'published',
+    startDatetime: oneDayFromNow.toISOString(),
+    endDatetime: twoDaysFromNow.toISOString(),
+    organizerId: 'user-admin',
+  })
+  await contentRepository.createEvent({
+    id: 'test-draft-event',
+    title: 'Draft Event Should Not Show',
+    description: 'This is a draft event',
+    location: 'Nowhere',
+    category: 'social',
+    status: 'draft',
+    startDatetime: oneDayFromNow.toISOString(),
+    endDatetime: twoDaysFromNow.toISOString(),
+    organizerId: 'user-admin',
+  })
 })
 
 // Helper: log in as admin and return a persistent cookie agent
 async function loginAsAdmin() {
   const agent = request.agent(server)
-  await agent
-    .post('/login')
-    .type('form')
-    .send({ email: 'admin@app.test', password: 'password123' })
+  await agent.post('/login').type('form').send({ role: 'admin' }).expect(302)
   return agent
 }
 
