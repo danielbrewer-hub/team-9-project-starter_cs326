@@ -26,6 +26,8 @@ import type { IApp } from "./contracts";
 import { CreateLoggingService } from "./service/LoggingService";
 import type { ILoggingService } from "./service/LoggingService";
 
+type HomeRepositoryImplementation = "memory" | "prisma";
+
 function createAppWithHomeContentRepository(
   homeContentRepository: IHomeContentRepository,
   logger?: ILoggingService,
@@ -86,4 +88,26 @@ export async function createDatabaseComposedApp(
     CreatePrismaHomeContentRepository(prisma),
     logger,
   );
+}
+
+function resolveHomeRepositoryImplementation(): HomeRepositoryImplementation {
+  const value = process.env.HOME_REPOSITORY ?? "memory";
+  if (value === "memory" || value === "prisma") {
+    return value;
+  }
+
+  throw new Error(
+    `Invalid HOME_REPOSITORY value "${value}". Expected "memory" or "prisma".`,
+  );
+}
+
+export async function createConfiguredComposedApp(
+  logger?: ILoggingService,
+): Promise<IApp> {
+  const implementation = resolveHomeRepositoryImplementation();
+  if (implementation === "prisma") {
+    return createDatabaseComposedApp(logger);
+  }
+
+  return createComposedApp(logger);
 }
