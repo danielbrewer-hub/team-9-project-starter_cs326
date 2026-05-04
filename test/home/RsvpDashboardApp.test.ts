@@ -97,6 +97,9 @@ const eventDetailController: IEventDetailController = {
   toggleRsvp: jest.fn(async (_req, res) => {
     res.status(200).send("rsvp toggled");
   }),
+  showEditForm: jest.fn(async (_req, res) => {
+    res.status(200).send("event edit");
+  }),
 };
 
 const homeController: IHomeController = {

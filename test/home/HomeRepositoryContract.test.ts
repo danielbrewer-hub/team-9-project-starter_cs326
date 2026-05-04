@@ -62,6 +62,10 @@ function createEventInput(overrides: Partial<ICreateEventInput> = {}): ICreateEv
   };
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function describeHomeRepositoryContract(
   implementationName: string,
   createRepository: () => RepositoryContractSetup | Promise<RepositoryContractSetup>,
@@ -318,6 +322,8 @@ function describeHomeRepositoryContract(
           status: "waitlisted",
         }),
       );
+      // SQLite CURRENT_TIMESTAMP resolution can be coarse; ensure deterministic queue order.
+      await sleep(1100);
       const waitlistedSecond = unwrapOk(
         await repository.upsertRsvp({
           id: uniqueId("rsvp-waitlisted-second"),
