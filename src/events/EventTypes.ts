@@ -23,6 +23,7 @@ export interface IEventDetailView extends IEventRecord {
   canCancel: boolean;
   canRsvp: boolean;
   rsvpStatus?: RsvpStatus | null;
+  waitlistPosition?: number | null;
   isRsvpPending?: boolean;
   isFull?: boolean;
 }

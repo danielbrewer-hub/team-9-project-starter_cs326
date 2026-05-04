@@ -173,11 +173,23 @@ class EventDetailService implements IEventDetailService {
     let rsvpStatus = null;
     let isRsvpPending = false;
     let isFull = false;
+    let waitlistPosition: number | null = null;
     try {
       const rsvpsResult = await this.contentRepository.listRsvpsForUser(actor.userId);
       if (rsvpsResult.ok) {
         const userRsvp = rsvpsResult.value.find(r => r.eventId === event.id);
         rsvpStatus = userRsvp ? userRsvp.status : null;
+
+        if (rsvpStatus === "waitlisted") {
+          const eventRsvpsResult = await this.contentRepository.listRsvpsForEvent(event.id);
+          if (eventRsvpsResult.ok) {
+            const waitlistedRsvps = eventRsvpsResult.value
+              .filter((rsvp) => rsvp.status === "waitlisted")
+              .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+            const position = waitlistedRsvps.findIndex((rsvp) => rsvp.userId === actor.userId);
+            waitlistPosition = position >= 0 ? position + 1 : null;
+          }
+        }
       }
       const goingCountResult = await this.contentRepository.countGoingRsvpsForEvent(event.id);
       if (goingCountResult.ok) {
@@ -190,6 +202,7 @@ class EventDetailService implements IEventDetailService {
     return Ok({
       ...toEventDetailView(event, organizer.displayName, attendeeCountResult.value, actor),
       rsvpStatus,
+      waitlistPosition,
       isRsvpPending,
       isFull,
     });

@@ -39,6 +39,9 @@
           You are attending this event.
         <% } else if (event.rsvpStatus === 'waitlisted') { %>
           You are on the waitlist.
+          <% if (typeof event.waitlistPosition === "number") { %>
+            (Position <%= event.waitlistPosition %>)
+          <% } %>
         <% } else { %>
           <% if (event.isFull) { %>
             Event is full. You can join the waitlist.
