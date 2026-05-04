@@ -186,15 +186,22 @@ class RsvpDashboardService implements IRsvpDashboardService {
       return Err(ValidationError("Cannot cancel an RSVP for a past or cancelled event."));
     }
 
-    const upsertResult = await this.repository.upsertRsvp({
-      id: rsvp.id,
-      eventId: rsvp.eventId,
-      userId: rsvp.userId,
-      status: "cancelled",
-    });
+    if (rsvp.status === "going") {
+      const cancelAndPromoteResult = await this.repository.cancelAndPromoteNext(rsvp.id);
+      if (cancelAndPromoteResult.ok === false) {
+        return Err(UnexpectedDependencyError(cancelAndPromoteResult.value.message));
+      }
+    } else {
+      const upsertResult = await this.repository.upsertRsvp({
+        id: rsvp.id,
+        eventId: rsvp.eventId,
+        userId: rsvp.userId,
+        status: "cancelled",
+      });
 
-    if (upsertResult.ok === false) {
-      return Err(UnexpectedDependencyError(upsertResult.value.message));
+      if (upsertResult.ok === false) {
+        return Err(UnexpectedDependencyError(upsertResult.value.message));
+      }
     }
 
     return Ok(undefined);

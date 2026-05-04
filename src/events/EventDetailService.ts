@@ -107,15 +107,24 @@ class EventDetailService implements IEventDetailService {
         newStatus = "going";
       }
 
-      // 5. Upsert RSVP
-      const upsertResult = await this.contentRepository.upsertRsvp({
-        id: existingRsvp ? existingRsvp.id : `${event.id}-${actor.userId}`,
-        eventId: event.id,
-        userId: actor.userId,
-        status: newStatus,
-      });
-      if (upsertResult.ok === false) {
-        return Err(UnexpectedDependencyError(upsertResult.value.message));
+      // 5. Persist RSVP change (going-cancel uses atomic cancel + promotion)
+      if (existingRsvp?.status === "going" && newStatus === "cancelled") {
+        const cancelAndPromoteResult = await this.contentRepository.cancelAndPromoteNext(
+          existingRsvp.id,
+        );
+        if (cancelAndPromoteResult.ok === false) {
+          return Err(UnexpectedDependencyError(cancelAndPromoteResult.value.message));
+        }
+      } else {
+        const upsertResult = await this.contentRepository.upsertRsvp({
+          id: existingRsvp ? existingRsvp.id : `${event.id}-${actor.userId}`,
+          eventId: event.id,
+          userId: actor.userId,
+          status: newStatus,
+        });
+        if (upsertResult.ok === false) {
+          return Err(UnexpectedDependencyError(upsertResult.value.message));
+        }
       }
 
       // 6. Return updated event detail
