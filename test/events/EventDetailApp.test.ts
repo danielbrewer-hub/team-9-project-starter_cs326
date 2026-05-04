@@ -107,4 +107,71 @@ describe("event detail app layer", () => {
       },
     );
   });
+
+  describe("GET /events/:id/attendees", () => {
+    it.each([
+      ["organizer", "staff", "event-staff-organized"],
+      ["admin", "admin", DEMO_PUBLISHED_EVENT_ID],
+    ] as const)(
+      "allows the %s to fetch attendee list via HTMX",
+      async (_label, role, eventId) => {
+        const { app, contentRepository } = createEventAppHarness();
+        if (role === "staff") {
+          await contentRepository.createEvent({
+            id: eventId,
+            title: "Staff Organized Event",
+            description: "Owned by the signed-in staff organizer.",
+            location: "CS Building Room 202",
+            category: "planning",
+            status: "published",
+            capacity: 10,
+            startDatetime: "2026-05-04T14:00:00.000Z",
+            endDatetime: "2026-05-04T15:00:00.000Z",
+            organizerId: "user-staff",
+          });
+        }
+        const agent = await signInAs(app, role);
+
+        const response = await agent
+          .get(`/events/${eventId}/attendees`)
+          .set("HX-Request", "true")
+          .expect(200);
+
+        expect(response.text).toContain("Attendee List");
+        expect(response.text).toContain("Attending");
+        expect(response.text).toContain("Waitlisted");
+        expect(response.text).toContain("Cancelled");
+      },
+    );
+
+    it.each([
+      ["member", "user"],
+      ["non-organizer staff", "staff"],
+    ] as const)("denies attendee list access for %s without ownership/admin rights", async (_label, role) => {
+      const { app, contentRepository } = createEventAppHarness();
+      if (role === "staff") {
+        await contentRepository.createEvent({
+          id: "event-other-organizer",
+          title: "Other Organizer Event",
+          description: "Owned by another organizer.",
+          location: "CS Building Room 201",
+          category: "planning",
+          status: "published",
+          capacity: 10,
+          startDatetime: "2026-05-03T14:00:00.000Z",
+          endDatetime: "2026-05-03T15:00:00.000Z",
+          organizerId: "user-admin",
+        });
+      }
+      const agent = await signInAs(app, role);
+
+      const eventId = role === "staff" ? "event-other-organizer" : DEMO_PUBLISHED_EVENT_ID;
+      const response = await agent
+        .get(`/events/${eventId}/attendees`)
+        .set("HX-Request", "true")
+        .expect(403);
+
+      expect(response.text).toContain("Only the event organizer or an admin may view attendees.");
+    });
+  });
 });
