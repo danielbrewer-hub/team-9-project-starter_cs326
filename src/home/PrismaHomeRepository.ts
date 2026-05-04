@@ -196,6 +196,58 @@ export class PrismaHomeContentRepository implements IHomeContentRepository {
       return Err(toError(error));
     }
   }
+
+  async cancelAndPromoteNext(
+    rsvpId: string,
+  ): Promise<Result<{ cancelledRsvp: IRsvpRecord; promotedRsvp: IRsvpRecord | null }, Error>> {
+    try {
+      const target = await this.prisma.rsvp.findUnique({
+        where: { id: rsvpId },
+      });
+      if (!target) {
+        return Err(new Error("RSVP not found."));
+      }
+
+      const cancelled = await this.prisma.rsvp.update({
+        where: { id: target.id },
+        data: { status: "cancelled" },
+      });
+
+      if (target.status !== "going") {
+        return Ok({
+          cancelledRsvp: toRsvpRecord(cancelled),
+          promotedRsvp: null,
+        });
+      }
+
+      const nextWaitlisted = await this.prisma.rsvp.findFirst({
+        where: {
+          eventId: target.eventId,
+          status: "waitlisted",
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      if (!nextWaitlisted) {
+        return Ok({
+          cancelledRsvp: toRsvpRecord(cancelled),
+          promotedRsvp: null,
+        });
+      }
+
+      const promoted = await this.prisma.rsvp.update({
+        where: { id: nextWaitlisted.id },
+        data: { status: "going" },
+      });
+
+      return Ok({
+        cancelledRsvp: toRsvpRecord(cancelled),
+        promotedRsvp: toRsvpRecord(promoted),
+      });
+    } catch (error) {
+      return Err(toError(error));
+    }
+  }
 }
 
 export function CreatePrismaHomeContentRepository(

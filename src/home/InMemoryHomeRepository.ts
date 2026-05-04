@@ -107,6 +107,51 @@ function upsertStoredRsvp(input: ICreateRsvpInput, now: Date = new Date()): IRsv
   return cloneRsvp(created);
 }
 
+function cancelAndPromoteStoredRsvp(rsvpId: string): {
+  cancelledRsvp: IRsvpRecord;
+  promotedRsvp: IRsvpRecord | null;
+} {
+  const target = rsvps.get(rsvpId);
+  if (!target) {
+    throw new Error("RSVP not found.");
+  }
+
+  const cancelledRsvp: IRsvpRecord = {
+    ...target,
+    status: "cancelled",
+  };
+  rsvps.set(cancelledRsvp.id, cancelledRsvp);
+
+  if (target.status !== "going") {
+    return {
+      cancelledRsvp: cloneRsvp(cancelledRsvp),
+      promotedRsvp: null,
+    };
+  }
+
+  const nextWaitlisted = Array.from(rsvps.values())
+    .filter((rsvp) => rsvp.eventId === target.eventId && rsvp.status === "waitlisted")
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))[0];
+
+  if (!nextWaitlisted) {
+    return {
+      cancelledRsvp: cloneRsvp(cancelledRsvp),
+      promotedRsvp: null,
+    };
+  }
+
+  const promotedRsvp: IRsvpRecord = {
+    ...nextWaitlisted,
+    status: "going",
+  };
+  rsvps.set(promotedRsvp.id, promotedRsvp);
+
+  return {
+    cancelledRsvp: cloneRsvp(cancelledRsvp),
+    promotedRsvp: cloneRsvp(promotedRsvp),
+  };
+}
+
 function daysFrom(base: Date, days: number, hour: number, minute = 0): string {
   const date = new Date(base);
   date.setUTCDate(date.getUTCDate() + days);
@@ -199,6 +244,19 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
 
   async upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>> {
     return Ok(upsertStoredRsvp(input));
+  }
+
+  async cancelAndPromoteNext(
+    rsvpId: string,
+  ): Promise<Result<{ cancelledRsvp: IRsvpRecord; promotedRsvp: IRsvpRecord | null }, Error>> {
+    try {
+      return Ok(cancelAndPromoteStoredRsvp(rsvpId));
+    } catch (error) {
+      return {
+        ok: false,
+        value: error instanceof Error ? error : new Error(String(error)),
+      };
+    }
   }
 }
 

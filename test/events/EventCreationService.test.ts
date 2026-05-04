@@ -66,6 +66,7 @@ function createRepositoryMock(): jest.Mocked<IHomeContentRepository> {
     countGoingRsvpsForEvent: jest.fn(),
     listRsvpsForUser: jest.fn(),
     upsertRsvp: jest.fn(),
+    cancelAndPromoteNext: jest.fn(),
   };
 }
 
