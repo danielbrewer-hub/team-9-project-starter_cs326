@@ -1,4 +1,5 @@
 import type { IUserRecord, UserRole } from "../../src/auth/User";
+import { UnexpectedDependencyError as AuthDependencyError } from "../../src/auth/errors";
 import type { IUserRepository } from "../../src/auth/UserRepository";
 import { CreateEventDetailService } from "../../src/events/EventDetailService";
 import type { IActingUser } from "../../src/events/EventTypes";
@@ -60,6 +61,7 @@ function createRepositoryMock(): jest.Mocked<IHomeContentRepository> {
     findEventById: jest.fn(),
     createEvent: jest.fn(),
     updateEvent: jest.fn(),
+    listRsvpAttendeesForEvent: jest.fn(),
     listRsvpsForEvent: jest.fn(),
     countGoingRsvpsForEvent: jest.fn(),
     listRsvpsForUser: jest.fn(),
@@ -100,6 +102,16 @@ function seedRepositoryState(
   repository.countGoingRsvpsForEvent.mockImplementation(async (eventId) => {
     return Ok(
       rsvps.filter((rsvp) => rsvp.eventId === eventId && rsvp.status === "going").length,
+    );
+  });
+  repository.listRsvpAttendeesForEvent.mockImplementation(async (eventId) => {
+    return Ok(
+      rsvps
+        .filter((rsvp) => rsvp.eventId === eventId)
+        .map((rsvp) => ({
+          ...rsvp,
+          displayName: rsvp.userId,
+        })),
     );
   });
   repository.upsertRsvp.mockImplementation(async (input: ICreateRsvpInput) => {
@@ -237,7 +249,7 @@ describe("EventDetailService RSVP toggle", () => {
       const { repository, userRepository, service } = createHarness();
       const event = createEvent();
       seedRepositoryState(repository, event);
-      userRepository.findById.mockResolvedValue(Err({ name: "UnexpectedDependencyError", message: "Unable to load organizer." }));
+      userRepository.findById.mockResolvedValue(Err(AuthDependencyError("Unable to load organizer.")));
 
       const result = await service.toggleRsvp(event.id, member);
 

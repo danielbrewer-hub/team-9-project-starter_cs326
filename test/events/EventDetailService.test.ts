@@ -4,6 +4,7 @@ import type { IUserRepository } from "../../src/auth/UserRepository";
 import { CreateEventDetailService } from "../../src/events/EventDetailService";
 import type { IActingUser } from "../../src/events/EventTypes";
 import type {
+  IEventAttendeeRecord,
   EventStatus,
   IEventRecord,
   IHomeContentRepository,
@@ -66,6 +67,7 @@ function createRepositoryMock(): jest.Mocked<IHomeContentRepository> {
     findEventById: jest.fn(),
     createEvent: jest.fn(),
     updateEvent: jest.fn(),
+    listRsvpAttendeesForEvent: jest.fn(),
     listRsvpsForEvent: jest.fn(),
     countGoingRsvpsForEvent: jest.fn(),
     listRsvpsForUser: jest.fn(),
@@ -315,11 +317,12 @@ describe("EventDetailService", () => {
     ] as const)("allows the %s to load attendees", async (_label, actor) => {
       const { repository, service, userRepository } = createHarness();
       repository.findEventById.mockResolvedValue(Ok(createEvent()));
-      const attendeeRecords: IRsvpRecord[] = [
+      const attendeeRecords: IEventAttendeeRecord[] = [
         {
           id: "rsvp-b",
           eventId: "event-published",
           userId: "user-reader",
+          displayName: "Una User",
           status: "going",
           createdAt: "2026-04-21T12:10:00.000Z",
         },
@@ -327,6 +330,7 @@ describe("EventDetailService", () => {
           id: "rsvp-a",
           eventId: "event-published",
           userId: "user-admin",
+          displayName: "Avery Admin",
           status: "going",
           createdAt: "2026-04-21T12:05:00.000Z",
         },
@@ -334,6 +338,7 @@ describe("EventDetailService", () => {
           id: "rsvp-c",
           eventId: "event-published",
           userId: "user-staff",
+          displayName: "Sam Staff",
           status: "waitlisted",
           createdAt: "2026-04-21T12:15:00.000Z",
         },
@@ -341,30 +346,14 @@ describe("EventDetailService", () => {
           id: "rsvp-d",
           eventId: "event-published",
           userId: "user-other-staff",
+          displayName: "Taylor Staff",
           status: "cancelled",
           createdAt: "2026-04-21T12:20:00.000Z",
         },
       ];
-      repository.listRsvpsForEvent.mockResolvedValue(
+      repository.listRsvpAttendeesForEvent.mockResolvedValue(
         Ok(attendeeRecords),
       );
-      userRepository.findById
-        .mockResolvedValueOnce(
-          Ok(createUser({ id: "user-reader", displayName: "Una User", role: "user" })),
-        )
-        .mockResolvedValueOnce(
-          Ok(createUser({ id: "user-admin", displayName: "Avery Admin", role: "admin" })),
-        )
-        .mockResolvedValueOnce(Ok(createUser({ id: "user-staff", displayName: "Sam Staff" })))
-        .mockResolvedValueOnce(
-          Ok(
-            createUser({
-              id: "user-other-staff",
-              displayName: "Taylor Staff",
-              role: "staff",
-            }),
-          ),
-        );
 
       const result = await service.getAttendeeList("event-published", actor);
 
@@ -383,7 +372,7 @@ describe("EventDetailService", () => {
         ]);
       }
       expect(repository.findEventById).toHaveBeenCalledWith("event-published");
-      expect(repository.listRsvpsForEvent).toHaveBeenCalledWith("event-published");
+      expect(repository.listRsvpAttendeesForEvent).toHaveBeenCalledWith("event-published");
     });
 
     it.each([
@@ -402,7 +391,7 @@ describe("EventDetailService", () => {
           message: "Only the event organizer or an admin may view attendees.",
         });
       }
-      expect(repository.listRsvpsForEvent).not.toHaveBeenCalled();
+      expect(repository.listRsvpAttendeesForEvent).not.toHaveBeenCalled();
       expect(userRepository.findById).not.toHaveBeenCalled();
     });
   });

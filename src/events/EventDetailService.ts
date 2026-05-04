@@ -109,9 +109,9 @@ class EventDetailService implements IEventDetailService {
         );
       }
 
-      const rsvpsResult = await this.contentRepository.listRsvpsForEvent(event.id);
-      if (rsvpsResult.ok === false) {
-        return Err(UnexpectedDependencyError(rsvpsResult.value.message));
+      const attendeeRowsResult = await this.contentRepository.listRsvpAttendeesForEvent(event.id);
+      if (attendeeRowsResult.ok === false) {
+        return Err(UnexpectedDependencyError(attendeeRowsResult.value.message));
       }
 
       const groupedAttendees: IEventAttendeeListView["attendees"] = {
@@ -120,22 +120,12 @@ class EventDetailService implements IEventDetailService {
         cancelled: [],
       };
 
-      for (const rsvp of rsvpsResult.value) {
-        const userResult = await this.userRepository.findById(rsvp.userId);
-        if (userResult.ok === false) {
-          return Err(UnexpectedDependencyError(userResult.value.message));
-        }
-
-        const attendee = userResult.value;
-        if (!attendee) {
-          return Err(UnexpectedDependencyError("Unable to load attendee profile."));
-        }
-
-        groupedAttendees[rsvp.status].push({
-          userId: attendee.id,
-          displayName: attendee.displayName,
-          status: rsvp.status,
-          rsvpCreatedAt: rsvp.createdAt,
+      for (const attendeeRow of attendeeRowsResult.value) {
+        groupedAttendees[attendeeRow.status].push({
+          userId: attendeeRow.userId,
+          displayName: attendeeRow.displayName,
+          status: attendeeRow.status,
+          rsvpCreatedAt: attendeeRow.createdAt,
         });
       }
 

@@ -1,5 +1,6 @@
 import { Ok, type Result } from "../lib/result";
 import type {
+  IEventAttendeeRecord,
   ICreateEventInput,
   ICreateRsvpInput,
   IEventRecord,
@@ -13,6 +14,7 @@ import {
   DEMO_PUBLISHED_EVENT_ID as publishedEventId,
   DEMO_PUBLISHED_EVENT_ORGANIZER_ID as publishedOrganizerId,
 } from "./HomeRepository";
+import { DEMO_USERS } from "../auth/InMemoryUserRepository";
 
 const events = new Map<string, IEventRecord>();
 const rsvps = new Map<string, IRsvpRecord>();
@@ -70,6 +72,22 @@ function listStoredRsvpsForEvent(eventId: string): IRsvpRecord[] {
     .filter((rsvp) => rsvp.eventId === eventId)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     .map(cloneRsvp);
+}
+
+function listStoredRsvpAttendeesForEvent(eventId: string): IEventAttendeeRecord[] {
+  const usersById = new Map(DEMO_USERS.map((user) => [user.id, user]));
+  return listStoredRsvpsForEvent(eventId)
+    .map((rsvp) => {
+      const user = usersById.get(rsvp.userId);
+      if (!user) {
+        return null;
+      }
+      return {
+        ...rsvp,
+        displayName: user.displayName,
+      };
+    })
+    .filter((record): record is IEventAttendeeRecord => record !== null);
 }
 
 function listStoredRsvpsForUser(userId: string): IRsvpRecord[] {
@@ -189,6 +207,10 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
     return Ok(listStoredRsvpsForEvent(eventId));
   }
 
+  async listRsvpAttendeesForEvent(eventId: string): Promise<Result<IEventAttendeeRecord[], Error>> {
+    return Ok(listStoredRsvpAttendeesForEvent(eventId));
+  }
+
   async countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>> {
     return Ok(countStoredGoingRsvpsForEvent(eventId));
   }
@@ -212,6 +234,7 @@ export {
   findStoredEventById,
   listStoredEvents,
   listStoredRsvpsForEvent,
+  listStoredRsvpAttendeesForEvent,
   listStoredRsvpsForUser,
   upsertStoredRsvp,
   updateStoredEvent,

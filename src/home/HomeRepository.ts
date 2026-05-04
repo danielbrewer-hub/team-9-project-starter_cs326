@@ -31,6 +31,10 @@ export interface IRsvpRecord {
   createdAt: string;
 }
 
+export interface IEventAttendeeRecord extends IRsvpRecord {
+  displayName: string;
+}
+
 export interface ICreateEventInput {
   id: string;
   title: string;
@@ -70,6 +74,7 @@ export interface IHomeContentRepository {
     eventId: string,
     input: IUpdateEventInput,
   ): Promise<Result<IEventRecord | null, Error>>;
+  listRsvpAttendeesForEvent(eventId: string): Promise<Result<IEventAttendeeRecord[], Error>>;
   listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>>;
   countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>;
   listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
