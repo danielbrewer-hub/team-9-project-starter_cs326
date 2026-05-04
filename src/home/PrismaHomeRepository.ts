@@ -201,49 +201,53 @@ export class PrismaHomeContentRepository implements IHomeContentRepository {
     rsvpId: string,
   ): Promise<Result<{ cancelledRsvp: IRsvpRecord; promotedRsvp: IRsvpRecord | null }, Error>> {
     try {
-      const target = await this.prisma.rsvp.findUnique({
-        where: { id: rsvpId },
-      });
-      if (!target) {
-        return Err(new Error("RSVP not found."));
-      }
-
-      const cancelled = await this.prisma.rsvp.update({
-        where: { id: target.id },
-        data: { status: "cancelled" },
-      });
-
-      if (target.status !== "going") {
-        return Ok({
-          cancelledRsvp: toRsvpRecord(cancelled),
-          promotedRsvp: null,
+      const result = await this.prisma.$transaction(async (tx) => {
+        const target = await tx.rsvp.findUnique({
+          where: { id: rsvpId },
         });
-      }
+        if (!target) {
+          throw new Error("RSVP not found.");
+        }
 
-      const nextWaitlisted = await this.prisma.rsvp.findFirst({
-        where: {
-          eventId: target.eventId,
-          status: "waitlisted",
-        },
-        orderBy: { createdAt: "asc" },
-      });
-
-      if (!nextWaitlisted) {
-        return Ok({
-          cancelledRsvp: toRsvpRecord(cancelled),
-          promotedRsvp: null,
+        const cancelled = await tx.rsvp.update({
+          where: { id: target.id },
+          data: { status: "cancelled" },
         });
-      }
 
-      const promoted = await this.prisma.rsvp.update({
-        where: { id: nextWaitlisted.id },
-        data: { status: "going" },
+        if (target.status !== "going") {
+          return {
+            cancelledRsvp: toRsvpRecord(cancelled),
+            promotedRsvp: null,
+          };
+        }
+
+        const nextWaitlisted = await tx.rsvp.findFirst({
+          where: {
+            eventId: target.eventId,
+            status: "waitlisted",
+          },
+          orderBy: { createdAt: "asc" },
+        });
+
+        if (!nextWaitlisted) {
+          return {
+            cancelledRsvp: toRsvpRecord(cancelled),
+            promotedRsvp: null,
+          };
+        }
+
+        const promoted = await tx.rsvp.update({
+          where: { id: nextWaitlisted.id },
+          data: { status: "going" },
+        });
+
+        return {
+          cancelledRsvp: toRsvpRecord(cancelled),
+          promotedRsvp: toRsvpRecord(promoted),
+        };
       });
 
-      return Ok({
-        cancelledRsvp: toRsvpRecord(cancelled),
-        promotedRsvp: toRsvpRecord(promoted),
-      });
+      return Ok(result);
     } catch (error) {
       return Err(toError(error));
     }
