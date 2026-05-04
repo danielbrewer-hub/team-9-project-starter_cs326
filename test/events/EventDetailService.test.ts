@@ -7,6 +7,7 @@ import type {
   EventStatus,
   IEventRecord,
   IHomeContentRepository,
+  IRsvpRecord,
 } from "../../src/home/HomeRepository";
 import { Err, Ok } from "../../src/lib/result";
 
@@ -55,6 +56,17 @@ function createUser(overrides: Partial<IUserRecord> = {}): IUserRecord {
     displayName: "Sam Staff",
     role: "staff",
     passwordHash: "hash",
+    ...overrides,
+  };
+}
+
+function createRsvp(overrides: Partial<IRsvpRecord> = {}): IRsvpRecord {
+  return {
+    id: "rsvp-member",
+    eventId: "event-published",
+    userId: memberActor.userId,
+    status: "going",
+    createdAt: "2026-04-21T12:00:00.000Z",
     ...overrides,
   };
 }
@@ -307,4 +319,109 @@ describe("EventDetailService", () => {
       }
     },
   );
+
+  it("computes waitlist position as first in queue", async () => {
+    const { repository, service } = createHarness();
+    repository.findEventById.mockResolvedValue(Ok(createEvent()));
+    repository.listRsvpsForUser.mockResolvedValue(
+      Ok([
+        createRsvp({
+          status: "waitlisted",
+          createdAt: "2026-04-21T12:10:00.000Z",
+        }),
+      ]),
+    );
+    repository.listRsvpsForEvent.mockResolvedValue(
+      Ok([
+        createRsvp({
+          id: "rsvp-member",
+          status: "waitlisted",
+          createdAt: "2026-04-21T12:10:00.000Z",
+        }),
+        createRsvp({
+          id: "rsvp-later",
+          userId: "user-later",
+          status: "waitlisted",
+          createdAt: "2026-04-21T12:20:00.000Z",
+        }),
+      ]),
+    );
+
+    const result = await service.getEventDetail("event-published", memberActor);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual(
+        expect.objectContaining({
+          rsvpStatus: "waitlisted",
+          waitlistPosition: 1,
+        }),
+      );
+    }
+  });
+
+  it("computes waitlist position as second in queue", async () => {
+    const { repository, service } = createHarness();
+    repository.findEventById.mockResolvedValue(Ok(createEvent()));
+    repository.listRsvpsForUser.mockResolvedValue(
+      Ok([
+        createRsvp({
+          status: "waitlisted",
+          createdAt: "2026-04-21T12:20:00.000Z",
+        }),
+      ]),
+    );
+    repository.listRsvpsForEvent.mockResolvedValue(
+      Ok([
+        createRsvp({
+          id: "rsvp-earlier",
+          userId: "user-earlier",
+          status: "waitlisted",
+          createdAt: "2026-04-21T12:10:00.000Z",
+        }),
+        createRsvp({
+          id: "rsvp-member",
+          status: "waitlisted",
+          createdAt: "2026-04-21T12:20:00.000Z",
+        }),
+      ]),
+    );
+
+    const result = await service.getEventDetail("event-published", memberActor);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual(
+        expect.objectContaining({
+          rsvpStatus: "waitlisted",
+          waitlistPosition: 2,
+        }),
+      );
+    }
+  });
+
+  it("returns null waitlist position when the actor is not waitlisted", async () => {
+    const { repository, service } = createHarness();
+    repository.findEventById.mockResolvedValue(Ok(createEvent()));
+    repository.listRsvpsForUser.mockResolvedValue(
+      Ok([
+        createRsvp({
+          status: "going",
+        }),
+      ]),
+    );
+
+    const result = await service.getEventDetail("event-published", memberActor);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value).toEqual(
+        expect.objectContaining({
+          rsvpStatus: "going",
+          waitlistPosition: null,
+        }),
+      );
+    }
+    expect(repository.listRsvpsForEvent).not.toHaveBeenCalled();
+  });
 });
