@@ -297,6 +297,135 @@ function describeHomeRepositoryContract(
         status: "going",
       });
     });
+
+    it("cancelAndPromoteNext promotes earliest waitlisted RSVP by createdAt", async () => {
+      const eventId = uniqueId("promote-order-event");
+      unwrapOk(await repository.createEvent(createEventInput({ id: eventId, capacity: 1 })));
+
+      const going = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-going"),
+          eventId,
+          userId: "user-going",
+          status: "going",
+        }),
+      );
+      const waitlistedFirst = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-waitlisted-first"),
+          eventId,
+          userId: "user-waitlisted-first",
+          status: "waitlisted",
+        }),
+      );
+      const waitlistedSecond = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-waitlisted-second"),
+          eventId,
+          userId: "user-waitlisted-second",
+          status: "waitlisted",
+        }),
+      );
+
+      const result = unwrapOk(await repository.cancelAndPromoteNext(going.id));
+
+      expect(result.cancelledRsvp).toMatchObject({
+        id: going.id,
+        status: "cancelled",
+      });
+      expect(result.promotedRsvp).toMatchObject({
+        id: waitlistedFirst.id,
+        status: "going",
+      });
+
+      const eventRsvps = unwrapOk(await repository.listRsvpsForEvent(eventId));
+      expect(eventRsvps).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: going.id, status: "cancelled" }),
+          expect.objectContaining({ id: waitlistedFirst.id, status: "going" }),
+          expect.objectContaining({ id: waitlistedSecond.id, status: "waitlisted" }),
+        ]),
+      );
+    });
+
+    it("cancelAndPromoteNext returns null promotion when no waitlisted RSVP exists", async () => {
+      const eventId = uniqueId("promote-none-event");
+      unwrapOk(await repository.createEvent(createEventInput({ id: eventId, capacity: 2 })));
+
+      const going = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-going"),
+          eventId,
+          userId: "user-going",
+          status: "going",
+        }),
+      );
+
+      const result = unwrapOk(await repository.cancelAndPromoteNext(going.id));
+
+      expect(result.cancelledRsvp).toMatchObject({
+        id: going.id,
+        status: "cancelled",
+      });
+      expect(result.promotedRsvp).toBeNull();
+    });
+
+    it("cancelAndPromoteNext does not promote when target RSVP is waitlisted or cancelled", async () => {
+      const eventId = uniqueId("promote-nongoing-event");
+      unwrapOk(await repository.createEvent(createEventInput({ id: eventId, capacity: 1 })));
+
+      const waitlistedTarget = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-waitlisted-target"),
+          eventId,
+          userId: "user-target-waitlisted",
+          status: "waitlisted",
+        }),
+      );
+      const otherWaitlisted = unwrapOk(
+        await repository.upsertRsvp({
+          id: uniqueId("rsvp-other-waitlisted"),
+          eventId,
+          userId: "user-other-waitlisted",
+          status: "waitlisted",
+        }),
+      );
+
+      const waitlistedResult = unwrapOk(await repository.cancelAndPromoteNext(waitlistedTarget.id));
+      expect(waitlistedResult.cancelledRsvp).toMatchObject({
+        id: waitlistedTarget.id,
+        status: "cancelled",
+      });
+      expect(waitlistedResult.promotedRsvp).toBeNull();
+
+      const cancelledResult = unwrapOk(await repository.cancelAndPromoteNext(waitlistedTarget.id));
+      expect(cancelledResult.cancelledRsvp).toMatchObject({
+        id: waitlistedTarget.id,
+        status: "cancelled",
+      });
+      expect(cancelledResult.promotedRsvp).toBeNull();
+
+      const eventRsvps = unwrapOk(await repository.listRsvpsForEvent(eventId));
+      expect(eventRsvps).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: waitlistedTarget.id, status: "cancelled" }),
+          expect.objectContaining({ id: otherWaitlisted.id, status: "waitlisted" }),
+        ]),
+      );
+    });
+
+    it("cancelAndPromoteNext returns Err for missing RSVP id and leaves data unchanged", async () => {
+      const eventId = uniqueId("promote-missing-rsvp-event");
+      unwrapOk(await repository.createEvent(createEventInput({ id: eventId })));
+
+      const before = unwrapOk(await repository.listRsvpsForEvent(eventId));
+      const result = await repository.cancelAndPromoteNext(uniqueId("missing-rsvp"));
+      const after = unwrapOk(await repository.listRsvpsForEvent(eventId));
+
+      expect(result.ok).toBe(false);
+      expect(after).toEqual(before);
+      expect(unwrapOk(await repository.countGoingRsvpsForEvent(eventId))).toBe(0);
+    });
   });
 }
 
