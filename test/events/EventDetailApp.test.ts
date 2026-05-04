@@ -1,17 +1,26 @@
 import request from "supertest";
 import type { IEventDetailService } from "../../src/events/EventDetailService";
 import { UnexpectedDependencyError } from "../../src/events/errors";
+import type { IEventAttendeeListView } from "../../src/events/EventTypes";
 import {
   DEMO_DRAFT_EVENT_ID,
   DEMO_PUBLISHED_EVENT_ID,
 } from "../../src/home/HomeRepository";
-import { Err } from "../../src/lib/result";
+import { Err, Ok } from "../../src/lib/result";
 import {
   createEventAppHarness,
   signInAs,
 } from "../support/eventAppHarness";
 
 describe("event detail app layer", () => {
+  const emptyAttendeeList: IEventAttendeeListView = {
+    eventId: DEMO_PUBLISHED_EVENT_ID,
+    attendees: {
+      going: [],
+      waitlisted: [],
+      cancelled: [],
+    },
+  };
   it("redirects unauthenticated detail requests to login", async () => {
     const { app } = createEventAppHarness();
 
@@ -81,6 +90,7 @@ describe("event detail app layer", () => {
         Err(UnexpectedDependencyError("detail dependency failed")),
       ),
       toggleRsvp: jest.fn(),
+      getAttendeeList: jest.fn().mockResolvedValue(Ok(emptyAttendeeList)),
     };
     const { app } = createEventAppHarness({ eventDetailService });
     const agent = await signInAs(app, "user");

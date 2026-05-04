@@ -126,6 +126,7 @@ function createEventDetailServiceMock(): jest.Mocked<IEventDetailService> {
   return {
     getEventDetail: jest.fn(),
     toggleRsvp: jest.fn(),
+    getAttendeeList: jest.fn(),
   };
 }
 

@@ -2,13 +2,19 @@ import { Err, Ok, type Result } from "../lib/result";
 import type { IUserRepository } from "../auth/UserRepository";
 import type { IEventRecord, IHomeContentRepository } from "../home/HomeRepository";
 import {
+  type EventAttendeeListError,
   EventAuthorizationError,
   EventNotFoundError,
   UnexpectedDependencyError,
   type EventDetailError,
   type EventRsvpToggleError,
 } from "./errors";
-import type { IActingUser, IEventDetailView } from "./EventTypes";
+import type {
+  IActingUser,
+  IEventAttendeeEntry,
+  IEventAttendeeListView,
+  IEventDetailView,
+} from "./EventTypes";
 import { canManageEvent, canViewEvent } from "./EventVisibility";
 
 type EventPermissionFlags = Pick<IEventDetailView, "canEdit" | "canCancel" | "canRsvp">;
@@ -26,6 +32,11 @@ export interface IEventDetailService {
     eventId: string,
     actor: IActingUser,
   ): Promise<Result<IEventDetailView, EventRsvpToggleError>>;
+
+  getAttendeeList(
+    eventId: string,
+    actor: IActingUser,
+  ): Promise<Result<IEventAttendeeListView, EventAttendeeListError>>;
 }
 
 function normalizeEventId(eventId: string): string | null {
@@ -59,7 +70,85 @@ function toEventDetailView(
   };
 }
 
+function sortByCreatedAtAscending(
+  left: IEventAttendeeEntry,
+  right: IEventAttendeeEntry,
+): number {
+  return left.rsvpCreatedAt.localeCompare(right.rsvpCreatedAt);
+}
+
+function canViewAttendeeList(event: IEventRecord, actor: IActingUser): boolean {
+  return actor.role === "admin" || event.organizerId === actor.userId;
+}
+
 class EventDetailService implements IEventDetailService {
+    async getAttendeeList(
+      eventId: string,
+      actor: IActingUser,
+    ): Promise<Result<IEventAttendeeListView, EventAttendeeListError>> {
+      const normalizedEventId = normalizeEventId(eventId);
+      if (!normalizedEventId) {
+        return Err(EventNotFoundError("Event not found."));
+      }
+
+      const eventResult = await this.contentRepository.findEventById(normalizedEventId);
+      if (eventResult.ok === false) {
+        return Err(UnexpectedDependencyError(eventResult.value.message));
+      }
+
+      const event = eventResult.value;
+      if (!event) {
+        return Err(EventNotFoundError("Event not found."));
+      }
+
+      if (!canViewAttendeeList(event, actor)) {
+        return Err(
+          EventAuthorizationError(
+            "Only the event organizer or an admin may view attendees.",
+          ),
+        );
+      }
+
+      const rsvpsResult = await this.contentRepository.listRsvpsForEvent(event.id);
+      if (rsvpsResult.ok === false) {
+        return Err(UnexpectedDependencyError(rsvpsResult.value.message));
+      }
+
+      const groupedAttendees: IEventAttendeeListView["attendees"] = {
+        going: [],
+        waitlisted: [],
+        cancelled: [],
+      };
+
+      for (const rsvp of rsvpsResult.value) {
+        const userResult = await this.userRepository.findById(rsvp.userId);
+        if (userResult.ok === false) {
+          return Err(UnexpectedDependencyError(userResult.value.message));
+        }
+
+        const attendee = userResult.value;
+        if (!attendee) {
+          return Err(UnexpectedDependencyError("Unable to load attendee profile."));
+        }
+
+        groupedAttendees[rsvp.status].push({
+          userId: attendee.id,
+          displayName: attendee.displayName,
+          status: rsvp.status,
+          rsvpCreatedAt: rsvp.createdAt,
+        });
+      }
+
+      groupedAttendees.going.sort(sortByCreatedAtAscending);
+      groupedAttendees.waitlisted.sort(sortByCreatedAtAscending);
+      groupedAttendees.cancelled.sort(sortByCreatedAtAscending);
+
+      return Ok({
+        eventId: event.id,
+        attendees: groupedAttendees,
+      });
+    }
+
     async toggleRsvp(
       eventId: string,
       actor: IActingUser,
