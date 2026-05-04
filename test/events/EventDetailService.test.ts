@@ -33,6 +33,12 @@ const otherStaffActor: IActingUser = {
 };
 
 function createEvent(overrides: Partial<IEventRecord> = {}): IEventRecord {
+  const start = new Date();
+  start.setDate(start.getDate() + 7);
+  start.setHours(14, 0, 0, 0);
+  const end = new Date(start);
+  end.setHours(15, 0, 0, 0);
+
   return {
     id: "event-published",
     title: "Architecture Review",
@@ -41,8 +47,8 @@ function createEvent(overrides: Partial<IEventRecord> = {}): IEventRecord {
     category: "planning",
     status: "published",
     capacity: 20,
-    startDatetime: "2026-05-01T14:00:00.000Z",
-    endDatetime: "2026-05-01T15:00:00.000Z",
+    startDatetime: start.toISOString(),
+    endDatetime: end.toISOString(),
     organizerId: "user-staff",
     createdAt: "2026-04-21T12:00:00.000Z",
     updatedAt: "2026-04-21T12:00:00.000Z",
