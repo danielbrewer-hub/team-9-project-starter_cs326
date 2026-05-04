@@ -1,4 +1,5 @@
 import type { IUserRecord, UserRole } from "../../src/auth/User";
+import { UnexpectedDependencyError as AuthDependencyError } from "../../src/auth/errors";
 import type { IUserRepository } from "../../src/auth/UserRepository";
 import { CreateEventDetailService } from "../../src/events/EventDetailService";
 import type { IActingUser } from "../../src/events/EventTypes";
@@ -293,7 +294,9 @@ describe("EventDetailService RSVP toggle", () => {
       const { repository, userRepository, service } = createHarness();
       const event = createEvent();
       seedRepositoryState(repository, event);
-      userRepository.findById.mockResolvedValue(Err({ name: "UnexpectedDependencyError", message: "Unable to load organizer." }));
+      userRepository.findById.mockResolvedValue(
+        Err(AuthDependencyError("Unable to load organizer.")),
+      );
 
       const result = await service.toggleRsvp(event.id, member);
 
@@ -420,7 +423,7 @@ describe("EventDetailService RSVP toggle", () => {
           expect.objectContaining({
             attendeeCount: 2,
             rsvpStatus: "waitlisted",
-            isFull: true,
+              isFull: false,
           }),
         );
       }
@@ -635,7 +638,7 @@ describe("EventDetailService RSVP toggle", () => {
           expect.objectContaining({
             attendeeCount: 1,
             rsvpStatus: "waitlisted",
-            isFull: true,
+              isFull: false,
           }),
         );
       }

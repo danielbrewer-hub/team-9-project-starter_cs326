@@ -293,7 +293,7 @@ describe("RsvpDashboardService", () => {
       repository.findEventById.mockResolvedValue(Ok(event));
       repository.cancelAndPromoteNext.mockResolvedValue(
         Ok({
-          cancelledRsvp: { ...rsvp, status: "cancelled" },
+          cancelledRsvp: { ...rsvp, status: "cancelled" as const },
           promotedRsvp: null,
         }),
       );
@@ -474,7 +474,7 @@ describe("RsvpDashboardService", () => {
     it("maps upsert dependency failures to UnexpectedDependencyError", async () => {
       const { repository, service } = createHarness();
       repository.listRsvpsForUser.mockResolvedValue(
-        Ok([createRsvp({ id: "rsvp-1", eventId: "event-1" })]),
+        Ok([createRsvp({ id: "rsvp-1", eventId: "event-1", status: "waitlisted" })]),
       );
       repository.findEventById.mockResolvedValue(
         Ok(createEvent({ id: "event-1", startDatetime: "2026-05-01T12:00:00" })),

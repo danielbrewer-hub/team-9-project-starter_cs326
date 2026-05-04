@@ -306,7 +306,7 @@ function describeHomeRepositoryContract(
         await repository.upsertRsvp({
           id: uniqueId("rsvp-going"),
           eventId,
-          userId: "user-going",
+          userId: "user-admin",
           status: "going",
         }),
       );
@@ -314,7 +314,7 @@ function describeHomeRepositoryContract(
         await repository.upsertRsvp({
           id: uniqueId("rsvp-waitlisted-first"),
           eventId,
-          userId: "user-waitlisted-first",
+          userId: "user-staff",
           status: "waitlisted",
         }),
       );
@@ -322,7 +322,7 @@ function describeHomeRepositoryContract(
         await repository.upsertRsvp({
           id: uniqueId("rsvp-waitlisted-second"),
           eventId,
-          userId: "user-waitlisted-second",
+          userId: "user-reader",
           status: "waitlisted",
         }),
       );
@@ -356,7 +356,7 @@ function describeHomeRepositoryContract(
         await repository.upsertRsvp({
           id: uniqueId("rsvp-going"),
           eventId,
-          userId: "user-going",
+          userId: "user-admin",
           status: "going",
         }),
       );
@@ -378,7 +378,7 @@ function describeHomeRepositoryContract(
         await repository.upsertRsvp({
           id: uniqueId("rsvp-waitlisted-target"),
           eventId,
-          userId: "user-target-waitlisted",
+          userId: "user-admin",
           status: "waitlisted",
         }),
       );
@@ -386,7 +386,7 @@ function describeHomeRepositoryContract(
         await repository.upsertRsvp({
           id: uniqueId("rsvp-other-waitlisted"),
           eventId,
-          userId: "user-other-waitlisted",
+          userId: "user-staff",
           status: "waitlisted",
         }),
       );
