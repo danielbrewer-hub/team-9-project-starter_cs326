@@ -2,7 +2,6 @@
   const startDate = new Date(event.startDatetime);
   const endDate = new Date(event.endDatetime);
   const startDatetimeIso = startDate.toISOString();
-  const statusLabel = event.status.charAt(0).toUpperCase() + event.status.slice(1);
   const statusClass =
     event.status === "published"
       ? "bg-emerald-100 text-emerald-800 ring-emerald-200"
@@ -20,8 +19,8 @@
         <div class="max-w-3xl">
           <div class="flex flex-wrap items-center gap-3">
             <p class="text-sm font-semibold text-sky-700">Event detail</p>
-            <span class="rounded-full px-3 py-1 text-xs font-semibold ring-1 <%= statusClass %>">
-              <%= statusLabel %>
+            <span class="rounded-full px-3 py-1 text-xs font-semibold capitalize ring-1 <%= statusClass %>">
+              <%= event.status %>
             </span>
           </div>
           <h1 class="mt-3 text-3xl font-bold text-slate-950 sm:text-4xl"><%= event.title %></h1>
