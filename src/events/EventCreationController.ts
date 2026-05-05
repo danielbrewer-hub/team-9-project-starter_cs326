@@ -9,7 +9,7 @@ import {
 } from "../session/AppSession";
 import type { ILoggingService } from "../service/LoggingService";
 import type { IEventCreationService } from "./EventCreationService";
-import type { ICreateEventInput } from "./EventTypes";
+import type { ICreateEventInput, IEventDetailView } from "./EventTypes";
 
 type EventCreationFieldErrors = Partial<Record<keyof ICreateEventInput, string>>;
 
@@ -18,6 +18,7 @@ type EventCreationFormValues = Record<keyof ICreateEventInput, string>;
 export interface IEventCreationController {
   showCreateEventForm(req: Request, res: Response): Promise<void>;
   createEventFromForm(req: Request, res: Response): Promise<void>;
+  finalizeEdits(req:Request,res:Response):Promise<void>;
 }
 
 function defaultFormValues(): EventCreationFormValues {
@@ -188,6 +189,46 @@ class EventCreationController implements IEventCreationController {
         statusCode: 500,
       });
     }
+  }
+  async finalizeEdits(req: Request, res: Response): Promise<void> {
+    const browserSession = recordPageView(req.session);
+    const actor = this.toActor(browserSession);
+    const formValues = buildFormValues(req.body);
+    const eventId = typeof req.params.id === "string" ? req.params.id : "";
+    
+    if (!actor) {
+      this.logger.warn("Blocked unauthenticated edit request");
+      res.status(401).render("partials/error", {
+        message: AuthenticationRequired("Please log in to continue.").message,
+        layout: false,
+      });
+      return;
+    }
+   if(actor.role == "user"){
+     this.logger.warn(`Blocked edit attempt by ${actor.id}`);
+      res.status(403).render("partials/error", {
+        message: "Only admins and the event organizer may edit events.",
+        layout: false,
+      });
+    }
+    const updated = await this.service.finalizeEdits(eventId,formValues,{userId:actor.id,role:actor.role});
+    if(!updated.ok){
+      this.logger.warn(`Event could not be updated: ${updated.value}`)
+      res.status(500).render("partials/error",{
+        message: "The event could not be updated.",
+        layout:false
+      })
+    }
+    if(updated.value && updated.ok){
+      this.logger.info(`PUT /events/${updated.value.id} by user${actor.displayName} -- ${actor.role}`)
+      res.render("events/detail",{
+          session:browserSession,
+          event:{...updated.value,canEdit:true,canCancel:true},
+          layout:false
+        }
+        )
+    }
+    return;
   }
 }
 
