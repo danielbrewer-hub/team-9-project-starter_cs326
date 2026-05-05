@@ -171,11 +171,7 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
   }
 
   async findEventById(eventId: string): Promise<Result<IEventRecord | null, Error>> {
-    const event = findStoredEventById(eventId)
-    if(!event){
-      return {ok:false,value:new Error("Event not found.")};
-    }
-    return Ok(event);
+    return Ok(findStoredEventById(eventId));
   }
 
   async createEvent(input: ICreateEventInput): Promise<Result<IEventRecord, Error>> {
