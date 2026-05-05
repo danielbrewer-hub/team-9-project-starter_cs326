@@ -442,6 +442,13 @@ Dashboard grouping:
     when the event is not "past" or "cancelled".
     RSVP records with status "cancelled" or events with status "past" or
     "cancelled" are placed in pastRsvps.
+Dashboard presentation:
+    The dashboard renders upcoming and past/cancelled groups as visually distinct
+    sections using Tailwind CSS. Upcoming RSVP cards use active styling, while
+    past and cancelled RSVP cards use a muted archive treatment.
+    Dashboard items show clear status indicators for rsvpStatus and eventStatus.
+    RSVP status badges visually distinguish going, waitlisted, cancelled, and
+    archived states.
 Dashboard sorting:
     Upcoming RSVPs should be sorted by event startDatetime ascending so the next
     event appears first.
@@ -460,6 +467,9 @@ Cancel RSVP:
     cancelRsvp verifies the RSVP belongs to the actor, rejects already-cancelled
     RSVPs, rejects RSVPs for past or cancelled events, and persists the change by
     upserting the RSVP with status "cancelled".
+    Dashboard cancel controls use Alpine.js to show an inline confirmation prompt
+    before submission. The first cancel click opens the prompt, Confirm submits
+    the existing form, and Keep RSVP closes the prompt without submitting.
 Immediate update:
     The RSVP dashboard renders its upcoming and past/cancelled sections inside
     #rsvp-dashboard-sections. That section listens for the
@@ -472,9 +482,11 @@ Immediate update:
     empty 204 response with HX-Trigger: rsvp-dashboard-refresh. HTMX then asks
     the Feature 7 partial route for the updated #rsvp-dashboard-sections HTML
     fragment with layout disabled.
-    HTMX swaps that refreshed section into the page so upcoming rows,
-    past/cancelled rows, counts, and empty states update without a full page
-    reload.
+    HTMX swaps that refreshed section into the page with view-transition support
+    so matching RSVP cards can animate between sections when the browser supports
+    it. RSVP cards expose stable view-transition names derived from their RSVP
+    ids. Upcoming rows, past/cancelled rows, counts, and empty states update
+    without a full page reload.
     Non-HTMX cancel requests are the fallback path and redirect back to /rsvp.
 
 Factory Helpers:
