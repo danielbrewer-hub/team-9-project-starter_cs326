@@ -1,6 +1,10 @@
-<div id="event-create-panel" aria-live="polite">
+<div
+  id="event-create-panel"
+  aria-live="polite"
+  class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm sm:p-8"
+>
   <% if (formError) { %>
-    <div class="mt-5">
+    <div class="mb-6">
       <%- include("../../partials/error", { message: formError }) %>
     </div>
   <% } %>
@@ -60,9 +64,9 @@
       }
     }"
     x-init="$nextTick(() => validateDateRange())"
-    class="mt-8 space-y-8"
+    class="space-y-7"
   >
-    <div class="grid gap-6 md:grid-cols-2">
+    <div class="grid gap-5 md:grid-cols-2">
       <label class="block">
         <span class="block text-sm font-semibold text-slate-700">Title</span>
         <input
@@ -71,7 +75,7 @@
           required
           aria-invalid="<%= fieldErrors?.title ? 'true' : 'false' %>"
           value="<%= formValues?.title ?? '' %>"
-          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+          class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-950 shadow-sm transition focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-100"
         />
         <% if (fieldErrors?.title) { %>
           <p class="mt-2 text-sm text-red-600"><%= fieldErrors.title %></p>
@@ -86,7 +90,7 @@
           required
           aria-invalid="<%= fieldErrors?.category ? 'true' : 'false' %>"
           value="<%= formValues?.category ?? '' %>"
-          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+          class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-950 shadow-sm transition focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-100"
         />
         <% if (fieldErrors?.category) { %>
           <p class="mt-2 text-sm text-red-600"><%= fieldErrors.category %></p>
@@ -101,14 +105,14 @@
         rows="5"
         required
         aria-invalid="<%= fieldErrors?.description ? 'true' : 'false' %>"
-        class="mt-2 w-full rounded-3xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+        class="mt-2 min-h-36 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-950 shadow-sm transition focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-100"
       ><%= formValues?.description ?? '' %></textarea>
       <% if (fieldErrors?.description) { %>
         <p class="mt-2 text-sm text-red-600"><%= fieldErrors.description %></p>
       <% } %>
     </label>
 
-    <div class="grid gap-6 md:grid-cols-2">
+    <div class="grid gap-5 md:grid-cols-2">
       <label class="block">
         <span class="block text-sm font-semibold text-slate-700">Location</span>
         <input
@@ -117,7 +121,7 @@
           required
           aria-invalid="<%= fieldErrors?.location ? 'true' : 'false' %>"
           value="<%= formValues?.location ?? '' %>"
-          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+          class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-950 shadow-sm transition focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-100"
         />
         <% if (fieldErrors?.location) { %>
           <p class="mt-2 text-sm text-red-600"><%= fieldErrors.location %></p>
@@ -133,7 +137,7 @@
           name="capacity"
           aria-invalid="<%= fieldErrors?.capacity ? 'true' : 'false' %>"
           value="<%= formValues?.capacity ?? '' %>"
-          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+          class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-950 shadow-sm transition focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-100"
         />
         <p class="mt-2 text-sm text-slate-500">Leave blank for no capacity limit.</p>
         <% if (fieldErrors?.capacity) { %>
@@ -142,7 +146,7 @@
       </label>
     </div>
 
-    <div class="grid gap-6 md:grid-cols-2">
+    <div class="grid gap-5 md:grid-cols-2">
       <label class="block">
         <span class="block text-sm font-semibold text-slate-700">Start Time</span>
         <input
@@ -156,7 +160,7 @@
           data-server-invalid="<%= fieldErrors?.startDatetime ? 'true' : 'false' %>"
           :aria-invalid="startDatetimeError ? 'true' : $el.dataset.serverInvalid"
           value="<%= formValues?.startDatetime ?? '' %>"
-          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+          class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-950 shadow-sm transition focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-100"
         />
         <% if (fieldErrors?.startDatetime) { %>
           <p class="mt-2 text-sm text-red-600" x-show="!dateRangeTouched"><%= fieldErrors.startDatetime %></p>
@@ -182,7 +186,7 @@
           data-server-invalid="<%= fieldErrors?.endDatetime ? 'true' : 'false' %>"
           :aria-invalid="dateRangeError ? 'true' : $el.dataset.serverInvalid"
           value="<%= formValues?.endDatetime ?? '' %>"
-          class="mt-2 w-full rounded-2xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900 focus:border-blue-500 focus:outline-none"
+          class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-slate-950 shadow-sm transition focus:border-sky-500 focus:outline-none focus:ring-4 focus:ring-sky-100"
         />
         <% if (fieldErrors?.endDatetime) { %>
           <p class="mt-2 text-sm text-red-600" x-show="!dateRangeTouched"><%= fieldErrors.endDatetime %></p>
@@ -196,20 +200,20 @@
       </label>
     </div>
 
-    <div class="flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex flex-col gap-4 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
       <p class="text-sm text-slate-500">
         Logged in as <strong class="text-slate-700"><%= session?.authenticatedUser?.displayName %></strong>.
       </p>
       <div class="flex flex-wrap gap-3">
         <a
           href="/home"
-          class="inline-flex items-center justify-center rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 no-underline hover:bg-slate-100"
+          class="inline-flex items-center justify-center rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 no-underline transition hover:bg-slate-100"
         >
           Cancel
         </a>
         <button
           type="submit"
-          class="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white border border-slate-900 cursor-pointer hover:bg-slate-800"
+          class="inline-flex items-center justify-center rounded-lg border border-emerald-700 bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-100"
         >
           Save Draft Event
         </button>
