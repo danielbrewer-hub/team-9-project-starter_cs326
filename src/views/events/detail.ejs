@@ -1,6 +1,7 @@
 <%
   const startDate = new Date(event.startDatetime);
   const endDate = new Date(event.endDatetime);
+  const startDatetimeIso = startDate.toISOString();
   const statusLabel = event.status.charAt(0).toUpperCase() + event.status.slice(1);
   const statusClass =
     event.status === "published"
@@ -55,9 +56,38 @@
           <dt class="text-sm font-semibold text-slate-500">Location</dt>
           <dd class="mt-1 text-base text-slate-950 sm:mt-0"><%= event.location %></dd>
         </div>
-        <div class="py-4 sm:grid sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-4">
+        <div
+          class="py-4 sm:grid sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-4"
+          x-data="{
+            relativeStartTime: '',
+            updateRelativeStartTime() {
+              const start = new Date('<%= startDatetimeIso %>');
+              const diffMs = start.getTime() - Date.now();
+              const absMs = Math.abs(diffMs);
+              const units = [
+                ['year', 31536000000],
+                ['month', 2592000000],
+                ['week', 604800000],
+                ['day', 86400000],
+                ['hour', 3600000],
+                ['minute', 60000],
+              ];
+              const selected = units.find(([, ms]) => absMs >= ms) || units[units.length - 1];
+              const value = Math.round(diffMs / selected[1]);
+              this.relativeStartTime = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(value, selected[0]);
+            }
+          }"
+          x-init="updateRelativeStartTime()"
+        >
           <dt class="text-sm font-semibold text-slate-500">Starts</dt>
-          <dd class="mt-1 text-base text-slate-950 sm:mt-0"><%= startDate.toLocaleString() %></dd>
+          <dd class="mt-1 flex flex-col gap-2 text-base text-slate-950 sm:mt-0">
+            <time datetime="<%= startDatetimeIso %>"><%= startDate.toLocaleString() %></time>
+            <span
+              x-show="relativeStartTime"
+              x-text="relativeStartTime"
+              class="w-fit rounded-full bg-sky-100 px-3 py-1 text-sm font-semibold text-sky-800 ring-1 ring-sky-200"
+            ></span>
+          </dd>
         </div>
         <div class="py-4 last:pb-0 sm:grid sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-4">
           <dt class="text-sm font-semibold text-slate-500">Ends</dt>
