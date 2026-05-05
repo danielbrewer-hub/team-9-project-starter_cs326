@@ -23,4 +23,19 @@ describe("event creation live validation", () => {
     expect(response.text).toContain('x-text="dateRangeError"');
     expect(response.text).toContain('aria-live="polite"');
   });
+
+  it("renders the description character counter without a hard limit", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "staff");
+
+    const response = await agent.get("/events/new").expect(200);
+
+    expect(response.text).toContain("descriptionLength: 0");
+    expect(response.text).toContain("updateDescriptionLength");
+    expect(response.text).toContain('x-ref="description"');
+    expect(response.text).toContain('@input="updateDescriptionLength()"');
+    expect(response.text).toContain('x-text="descriptionLength"');
+    expect(response.text).toContain("characters");
+    expect(response.text).not.toContain("maxlength");
+  });
 });
