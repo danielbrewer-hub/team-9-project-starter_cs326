@@ -22,6 +22,7 @@ export interface IHomePageData {
     location: string;
     category: string;
     attendeeCount: number;
+    createdAt: string;
   }>;
 }
 
@@ -109,6 +110,7 @@ class HomeService implements IHomeService {
       location: updated.location,
       category: updated.category,
       attendeeCount,
+      createdAt: updated.createdAt,
     });
   }
 
@@ -138,8 +140,13 @@ class HomeService implements IHomeService {
         location: event.location,
         category: event.category,
         attendeeCount: rsvpResult.value.filter((rsvp) => rsvp.status === "going").length,
+        createdAt: event.createdAt,
       });
     }
+
+    recentEvents.sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt),
+    );
 
     const publishedCount = visibleEvents.filter((event) => event.status === "published").length;
     const organizerCount = new Set(visibleEvents.map((event) => event.organizerId)).size;
@@ -154,7 +161,7 @@ class HomeService implements IHomeService {
         `${publishedCount} published events`,
         `${organizerCount} organizers represented`,
       ],
-      recentEvents: recentEvents.slice(0, 5),
+      recentEvents,
     });
   }
 }
