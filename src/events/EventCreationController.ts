@@ -9,7 +9,7 @@ import {
 } from "../session/AppSession";
 import type { ILoggingService } from "../service/LoggingService";
 import type { IEventCreationService } from "./EventCreationService";
-import type { ICreateEventInput } from "./EventTypes";
+import type { ICreateEventInput, IEventDetailView } from "./EventTypes";
 
 type EventCreationFieldErrors = Partial<Record<keyof ICreateEventInput, string>>;
 
@@ -220,7 +220,13 @@ class EventCreationController implements IEventCreationController {
       })
     }
     if(updated.value && updated.ok){
-    res.render(`event/${updated.value.id}`)
+      this.logger.info(`PUT /events/${updated.value.id} by user${actor.displayName} -- ${actor.role}`)
+      res.render("events/detail",{
+          session:browserSession,
+          event:{...updated.value,canEdit:true,canCancel:true},
+          layout:false
+        }
+        )
     }
     return;
   }

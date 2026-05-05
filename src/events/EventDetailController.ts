@@ -138,6 +138,15 @@ class EventDetailController implements IEventDetailController {
 
     if (result.ok) {
       this.logger.info(`GET /events/${result.value.id} for ${browserSession.browserLabel}`);
+      if(this.isHtmxRequest(req)){
+        res.render("events/detail",{
+          session:browserSession,
+          event:result.value,
+          layout:false
+        }
+        )
+        return;
+      } 
       res.render("events/detail", {
         session: browserSession,
         event: result.value,
