@@ -30,6 +30,20 @@ const otherStaffActor: IActingUser = {
   role: "staff",
 };
 
+function eventWindowFromNow(daysFromNow: number): Pick<IEventRecord, "startDatetime" | "endDatetime"> {
+  const start = new Date();
+  start.setDate(start.getDate() + daysFromNow);
+  start.setHours(14, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setHours(start.getHours() + 1);
+
+  return {
+    startDatetime: start.toISOString(),
+    endDatetime: end.toISOString(),
+  };
+}
+
 function createEvent(overrides: Partial<IEventRecord> = {}): IEventRecord {
   return {
     id: "event-published",
@@ -39,8 +53,7 @@ function createEvent(overrides: Partial<IEventRecord> = {}): IEventRecord {
     category: "planning",
     status: "published",
     capacity: 20,
-    startDatetime: "2026-05-01T14:00:00.000Z",
-    endDatetime: "2026-05-01T15:00:00.000Z",
+    ...eventWindowFromNow(1),
     organizerId: "user-staff",
     createdAt: "2026-04-21T12:00:00.000Z",
     updatedAt: "2026-04-21T12:00:00.000Z",
