@@ -629,3 +629,76 @@ Errors:
 Tests:
     The Prisma repository should pass the HomeRepositoryContract test suite by
     adding the Prisma factory as another implementation of IHomeContentRepository.
+
+# Home
+Routes:
+GET /home -> homeController.showHome()
+
+Interfaces:
+IHomePageData: Home page data rendered after authentication:
+    export interface IHomePageData {
+    welcomeTitle: string;
+    welcomeMessage: string;
+    signedInSummary: string;
+    eventSummary: string[];
+    recentEvents: Array<{
+        id: string;
+        title: string;
+        status: string;
+        location: string;
+        category: string;
+        attendeeCount: number;
+        createdAt: string;
+    }>;
+    }
+IHomeController: The controller for the authenticated home page:
+    export interface IHomeController {
+    showHome(req: Request, res: Response): Promise<void>;
+    }
+IHomeService: The service that loads home page data:
+    export interface IHomeService {
+    getHomePageData(
+        actor: IAuthenticatedUser,
+    ): Promise<Result<IHomePageData, HomeServiceError>>;
+    }
+
+Error Type:
+HomeServiceError: Union type for home page failures:
+    export type HomeServiceError = {
+    name: "UnexpectedDependencyError" | "NotFoundError" | "ValidationError";
+    message: string;
+    };
+
+Behavior:
+Home access:
+    The home page requires an authenticated actor. Unauthenticated requests
+    receive an AuthenticationRequired error response.
+Home page data:
+    getHomePageData loads all stored events, filters them through canViewEvent for
+    the actor, and counts only "going" RSVPs for each visible event.
+    eventSummary includes the visible event count, published event count, and
+    number of represented organizers.
+Recent events:
+    recentEvents contains all visible events sorted by createdAt descending so
+    the most recently created event appears first.
+    The home page renders the first five recent events by default. When more than
+    five recent events exist, the remaining events render behind an Alpine.js
+    Show more / Show fewer control below the first five.
+HTTP response mapping:
+    HomeServiceError responses from dependencies use status 500 and render the
+    home page with a page-level error. Successful requests render the home page.
+
+Factory Helpers:
+For HomeController:
+    export function CreateHomeController(
+    service: IHomeService,
+    logger: ILoggingService,
+    ): IHomeController {
+    return new HomeController(service, logger);
+    }
+For HomeService:
+    export function CreateHomeService(
+    contentRepository: IHomeContentRepository,
+    ): IHomeService {
+    return new HomeService(contentRepository);
+    }
