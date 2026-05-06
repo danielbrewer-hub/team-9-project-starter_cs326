@@ -66,6 +66,7 @@ function createRepositoryMock(): jest.Mocked<IHomeContentRepository> {
     countGoingRsvpsForEvent: jest.fn(),
     listRsvpsForUser: jest.fn(),
     upsertRsvp: jest.fn(),
+    cancelAndPromoteNext: jest.fn(),
   };
 }
 
@@ -134,7 +135,9 @@ describe("EventCreationService", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.value.name).toBe("EventValidationError");
-      expect(result.value.field).toBe(field);
+      if (result.value.name === "EventValidationError") {
+        expect(result.value.field).toBe(field);
+      }
       expect(result.value.message).toContain("required");
     }
     expect(repository.createEvent).not.toHaveBeenCalled();

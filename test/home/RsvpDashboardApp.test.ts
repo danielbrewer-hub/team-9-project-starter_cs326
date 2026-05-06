@@ -88,6 +88,9 @@ const eventCreationController: IEventCreationController = {
   createEventFromForm: jest.fn(async (_req, res) => {
     res.status(201).send("event created");
   }),
+  finalizeEdits: jest.fn(async (_req, res) => {
+    res.status(200).send("edits finalized");
+  }),
 };
 
 const eventDetailController: IEventDetailController = {
@@ -96,6 +99,9 @@ const eventDetailController: IEventDetailController = {
   }),
   toggleRsvp: jest.fn(async (_req, res) => {
     res.status(200).send("rsvp toggled");
+  }),
+  showEditForm: jest.fn(async (_req, res) => {
+    res.status(200).send("event edit");
   }),
 };
 

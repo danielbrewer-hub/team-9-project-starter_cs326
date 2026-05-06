@@ -518,6 +518,67 @@ In HomeRepository.ts:
 
 # Feature 9 (Allen)
 
+Routes:
+GET /events/:id -> eventDetailController.showEventDetail()
+POST /events/:id/rsvp/toggle -> eventDetailController.toggleRsvp()
+POST /rsvp/:id/cancel -> rsvpDashboardController.cancelRsvp()
+
+Interfaces:
+IEventDetailView waitlist field: Event detail view data used to render waitlist queue position:
+    export interface IEventDetailView extends IEventRecord {
+    organizerDisplayName: string;
+    attendeeCount: number;
+    canEdit: boolean;
+    canCancel: boolean;
+    canRsvp: boolean;
+    rsvpStatus?: RsvpStatus | null;
+    waitlistPosition?: number | null;
+    isRsvpPending?: boolean;
+    isFull?: boolean;
+    }
+IHomeContentRepository promotion helper: Atomic cancellation and promotion operation used by RSVP cancellation flows:
+    cancelAndPromoteNext(
+    rsvpId: string,
+    ): Promise<
+        Result<
+        {
+            cancelledRsvp: IRsvpRecord;
+            promotedRsvp: IRsvpRecord | null;
+        },
+        Error
+        >
+    >;
+
+Behavior:
+Waitlist promotion:
+    When an RSVP with status "going" is cancelled, the repository operation
+    cancelAndPromoteNext cancels that RSVP and promotes the earliest
+    waitlisted RSVP for the same event to status "going" (ordered by createdAt
+    ascending).
+Atomic cancellation and promotion:
+    Cancellation and promotion are one operation. Both updates must succeed
+    together or fail together when backed by transactional storage.
+No promotion cases:
+    If no waitlisted RSVP exists for the event, the cancellation still succeeds
+    and promotedRsvp is null.
+    If the cancelled RSVP was not "going", no promotion occurs and promotedRsvp
+    is null.
+Waitlist position:
+    Event detail calculates a member's waitlistPosition when that member's RSVP
+    status for the event is "waitlisted". Position is 1-based and ordered by
+    waitlisted RSVP createdAt ascending. Non-waitlisted members receive null.
+Event detail rendering:
+    The event detail RSVP action area displays the waitlist position for
+    waitlisted members as part of the waitlist status text.
+
+Coordination note:
+    This feature extends RSVP cancellation logic owned by Feature 4. The shared
+    interface is IHomeContentRepository.cancelAndPromoteNext and the shared
+    service behavior is that Feature 4 toggleRsvp and Feature 7 cancelRsvp both
+    delegate going-to-cancelled transitions to this method.
+    Any changes to this interface or contract require coordination with the
+    Feature 4 owner before merge to avoid an Integration Compromise.
+
 # Feature 10 (Aditya)
 
 # Feature 12 (Allen)

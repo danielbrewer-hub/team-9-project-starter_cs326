@@ -1,4 +1,5 @@
 import type { IUserRecord, UserRole } from "../../src/auth/User";
+import { UnexpectedDependencyError as AuthDependencyError } from "../../src/auth/errors";
 import type { IUserRepository } from "../../src/auth/UserRepository";
 import { CreateEventDetailService } from "../../src/events/EventDetailService";
 import type { IActingUser } from "../../src/events/EventTypes";
@@ -8,7 +9,6 @@ import type {
   IEventRecord,
   IHomeContentRepository,
   IRsvpRecord,
-  RsvpStatus,
 } from "../../src/home/HomeRepository";
 import { Err, Ok } from "../../src/lib/result";
 
@@ -64,6 +64,7 @@ function createRepositoryMock(): jest.Mocked<IHomeContentRepository> {
     countGoingRsvpsForEvent: jest.fn(),
     listRsvpsForUser: jest.fn(),
     upsertRsvp: jest.fn(),
+    cancelAndPromoteNext: jest.fn(),
   };
 }
 
@@ -120,6 +121,47 @@ function seedRepositoryState(
     };
     rsvps.push(created);
     return Ok(created);
+  });
+  repository.cancelAndPromoteNext.mockImplementation(async (rsvpId: string) => {
+    const targetIndex = rsvps.findIndex((rsvp) => rsvp.id === rsvpId);
+    if (targetIndex < 0) {
+      return Err(new Error("Unable to cancel RSVP."));
+    }
+
+    const original = rsvps[targetIndex];
+    rsvps[targetIndex] = {
+      ...original,
+      status: "cancelled",
+    };
+
+    if (original.status !== "going") {
+      return Ok({
+        cancelledRsvp: rsvps[targetIndex],
+        promotedRsvp: null,
+      });
+    }
+
+    const nextWaitlisted = rsvps
+      .filter((rsvp) => rsvp.eventId === original.eventId && rsvp.status === "waitlisted")
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))[0];
+
+    if (!nextWaitlisted) {
+      return Ok({
+        cancelledRsvp: rsvps[targetIndex],
+        promotedRsvp: null,
+      });
+    }
+
+    const promotedIndex = rsvps.findIndex((rsvp) => rsvp.id === nextWaitlisted.id);
+    rsvps[promotedIndex] = {
+      ...rsvps[promotedIndex],
+      status: "going",
+    };
+
+    return Ok({
+      cancelledRsvp: rsvps[targetIndex],
+      promotedRsvp: rsvps[promotedIndex],
+    });
   });
 }
 
@@ -217,6 +259,21 @@ describe("EventDetailService RSVP toggle", () => {
         },
         "Unable to save RSVP.",
       ],
+      [
+        "cancel-and-promote failure",
+        (repository: jest.Mocked<IHomeContentRepository>) => {
+          const event = createEvent();
+          repository.findEventById.mockResolvedValue(Ok(event));
+          repository.listRsvpsForUser.mockResolvedValue(
+            Ok([createRsvp({ id: "rsvp-going", status: "going" })]),
+          );
+          repository.countGoingRsvpsForEvent.mockResolvedValue(Ok(1));
+          repository.cancelAndPromoteNext.mockResolvedValue(
+            Err(new Error("Unable to cancel RSVP.")),
+          );
+        },
+        "Unable to cancel RSVP.",
+      ],
     ])("maps %s to UnexpectedDependencyError", async (_label, arrange, message) => {
       const { repository, userRepository, service } = createHarness();
       arrange(repository);
@@ -237,7 +294,9 @@ describe("EventDetailService RSVP toggle", () => {
       const { repository, userRepository, service } = createHarness();
       const event = createEvent();
       seedRepositoryState(repository, event);
-      userRepository.findById.mockResolvedValue(Err({ name: "UnexpectedDependencyError", message: "Unable to load organizer." }));
+      userRepository.findById.mockResolvedValue(
+        Err(AuthDependencyError("Unable to load organizer.")),
+      );
 
       const result = await service.toggleRsvp(event.id, member);
 
@@ -364,7 +423,7 @@ describe("EventDetailService RSVP toggle", () => {
           expect.objectContaining({
             attendeeCount: 2,
             rsvpStatus: "waitlisted",
-            isFull: true,
+              isFull: false,
           }),
         );
       }
@@ -405,44 +464,124 @@ describe("EventDetailService RSVP toggle", () => {
       });
     });
 
-    it.each<RsvpStatus>(["going", "waitlisted"])(
-      "cancels an existing %s RSVP",
-      async (status) => {
-        const { repository, service } = createHarness();
-        const event = createEvent({ capacity: 3 });
-        const rsvps = [
-          createRsvp({
-            id: `rsvp-${status}`,
-            status,
-          }),
-          createRsvp({
-            id: "rsvp-other",
-            userId: "user-other",
-            status: "going",
-          }),
-        ];
-        seedRepositoryState(repository, event, rsvps);
+    it("cancels a going RSVP and promotes the earliest waitlisted RSVP", async () => {
+      const { repository, service } = createHarness();
+      const event = createEvent({ capacity: 2 });
+      const rsvps = [
+        createRsvp({
+          id: "rsvp-going-member",
+          status: "going",
+          createdAt: "2026-04-01T10:00:00.000Z",
+        }),
+        createRsvp({
+          id: "rsvp-going-other",
+          userId: "user-other",
+          status: "going",
+          createdAt: "2026-04-01T10:05:00.000Z",
+        }),
+        createRsvp({
+          id: "rsvp-waitlisted-first",
+          userId: "user-first",
+          status: "waitlisted",
+          createdAt: "2026-04-01T10:10:00.000Z",
+        }),
+        createRsvp({
+          id: "rsvp-waitlisted-second",
+          userId: "user-second",
+          status: "waitlisted",
+          createdAt: "2026-04-01T10:20:00.000Z",
+        }),
+      ];
+      seedRepositoryState(repository, event, rsvps);
 
-        const result = await service.toggleRsvp(event.id, member);
+      const result = await service.toggleRsvp(event.id, member);
 
-        expect(result.ok).toBe(true);
-        if (result.ok) {
-          expect(result.value).toEqual(
-            expect.objectContaining({
-              attendeeCount: 1,
-              rsvpStatus: "cancelled",
-              isFull: false,
-            }),
-          );
-        }
-        expect(repository.upsertRsvp).toHaveBeenCalledWith({
-          id: `rsvp-${status}`,
-          eventId: event.id,
-          userId: member.userId,
-          status: "cancelled",
-        });
-      },
-    );
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toEqual(
+          expect.objectContaining({
+            attendeeCount: 2,
+            rsvpStatus: "cancelled",
+            isFull: true,
+          }),
+        );
+      }
+      expect(repository.cancelAndPromoteNext).toHaveBeenCalledWith("rsvp-going-member");
+      expect(repository.upsertRsvp).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: "cancelled" }),
+      );
+    });
+
+    it("cancels a going RSVP without promotion when the waitlist is empty", async () => {
+      const { repository, service } = createHarness();
+      const event = createEvent({ capacity: 3 });
+      const rsvps = [
+        createRsvp({
+          id: "rsvp-going-member",
+          status: "going",
+        }),
+        createRsvp({
+          id: "rsvp-going-other",
+          userId: "user-other",
+          status: "going",
+        }),
+      ];
+      seedRepositoryState(repository, event, rsvps);
+
+      const result = await service.toggleRsvp(event.id, member);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toEqual(
+          expect.objectContaining({
+            attendeeCount: 1,
+            rsvpStatus: "cancelled",
+            isFull: false,
+          }),
+        );
+      }
+      expect(repository.cancelAndPromoteNext).toHaveBeenCalledWith("rsvp-going-member");
+      expect(repository.upsertRsvp).not.toHaveBeenCalledWith(
+        expect.objectContaining({ status: "cancelled" }),
+      );
+    });
+
+    it("cancels an existing waitlisted RSVP without triggering promotion", async () => {
+      const { repository, service } = createHarness();
+      const event = createEvent({ capacity: 2 });
+      const rsvps = [
+        createRsvp({
+          id: "rsvp-waitlisted-member",
+          status: "waitlisted",
+        }),
+        createRsvp({
+          id: "rsvp-going-other",
+          userId: "user-other",
+          status: "going",
+        }),
+      ];
+      seedRepositoryState(repository, event, rsvps);
+
+      const result = await service.toggleRsvp(event.id, member);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value).toEqual(
+          expect.objectContaining({
+            attendeeCount: 1,
+            rsvpStatus: "cancelled",
+            isFull: false,
+          }),
+        );
+      }
+      expect(repository.cancelAndPromoteNext).not.toHaveBeenCalled();
+      expect(repository.upsertRsvp).toHaveBeenCalledWith({
+        id: "rsvp-waitlisted-member",
+        eventId: event.id,
+        userId: member.userId,
+        status: "cancelled",
+      });
+    });
 
     it("reactivates a cancelled RSVP as going when capacity is available", async () => {
       const { repository, service } = createHarness();
@@ -499,7 +638,7 @@ describe("EventDetailService RSVP toggle", () => {
           expect.objectContaining({
             attendeeCount: 1,
             rsvpStatus: "waitlisted",
-            isFull: true,
+              isFull: false,
           }),
         );
       }

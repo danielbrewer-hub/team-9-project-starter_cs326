@@ -107,18 +107,27 @@ class EventDetailService implements IEventDetailService {
         newStatus = "going";
       }
 
-      // 5. Upsert RSVP
-      const upsertResult = await this.contentRepository.upsertRsvp({
-        id: existingRsvp ? existingRsvp.id : `${event.id}-${actor.userId}`,
-        eventId: event.id,
-        userId: actor.userId,
-        status: newStatus,
-      });
-      if (upsertResult.ok === false) {
-        return Err(UnexpectedDependencyError(upsertResult.value.message));
+      // 5. Persist RSVP change (going-cancel uses atomic cancel + promotion)
+      if (existingRsvp?.status === "going" && newStatus === "cancelled") {
+        const cancelAndPromoteResult = await this.contentRepository.cancelAndPromoteNext(
+          existingRsvp.id,
+        );
+        if (cancelAndPromoteResult.ok === false) {
+          return Err(UnexpectedDependencyError(cancelAndPromoteResult.value.message));
+        }
+      } else {
+        const upsertResult = await this.contentRepository.upsertRsvp({
+          id: existingRsvp ? existingRsvp.id : `${event.id}-${actor.userId}`,
+          eventId: event.id,
+          userId: actor.userId,
+          status: newStatus,
+        });
+        if (upsertResult.ok === false) {
+          return Err(UnexpectedDependencyError(upsertResult.value.message));
+        }
       }
 
-      // 6. Return updated event detail
+      // 6. Return updated event detail (cancel + promotion handled by cancelAndPromoteNext)
       return this.getEventDetail(event.id, actor);
     }
   constructor(
@@ -164,11 +173,23 @@ class EventDetailService implements IEventDetailService {
     let rsvpStatus = null;
     let isRsvpPending = false;
     let isFull = false;
+    let waitlistPosition: number | null = null;
     try {
       const rsvpsResult = await this.contentRepository.listRsvpsForUser(actor.userId);
       if (rsvpsResult.ok) {
         const userRsvp = rsvpsResult.value.find(r => r.eventId === event.id);
         rsvpStatus = userRsvp ? userRsvp.status : null;
+
+        if (rsvpStatus === "waitlisted") {
+          const eventRsvpsResult = await this.contentRepository.listRsvpsForEvent(event.id);
+          if (eventRsvpsResult.ok) {
+            const waitlistedRsvps = eventRsvpsResult.value
+              .filter((rsvp) => rsvp.status === "waitlisted")
+              .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+            const position = waitlistedRsvps.findIndex((rsvp) => rsvp.userId === actor.userId);
+            waitlistPosition = position >= 0 ? position + 1 : null;
+          }
+        }
       }
       const goingCountResult = await this.contentRepository.countGoingRsvpsForEvent(event.id);
       if (goingCountResult.ok) {
@@ -181,6 +202,7 @@ class EventDetailService implements IEventDetailService {
     return Ok({
       ...toEventDetailView(event, organizer.displayName, attendeeCountResult.value, actor),
       rsvpStatus,
+      waitlistPosition,
       isRsvpPending,
       isFull,
     });

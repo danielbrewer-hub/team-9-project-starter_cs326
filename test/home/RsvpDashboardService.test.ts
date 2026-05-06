@@ -5,7 +5,6 @@ import type {
   IEventRecord,
   IHomeContentRepository,
   IRsvpRecord,
-  RsvpStatus,
 } from "../../src/home/HomeRepository";
 import { CreateRsvpDashboardService } from "../../src/home/RsvpDashboardService";
 import { Err, Ok } from "../../src/lib/result";
@@ -55,6 +54,7 @@ function createRepositoryMock(): jest.Mocked<IHomeContentRepository> {
     countGoingRsvpsForEvent: jest.fn(),
     listRsvpsForUser: jest.fn(),
     upsertRsvp: jest.fn(),
+    cancelAndPromoteNext: jest.fn(),
   };
 }
 
@@ -276,43 +276,70 @@ describe("RsvpDashboardService", () => {
   });
 
   describe("cancelRsvp", () => {
-    it.each<RsvpStatus>(["going", "waitlisted"])(
-      "cancels an active %s RSVP by upserting a cancelled status",
-      async (status) => {
-        const { repository, service } = createHarness();
-        const rsvp = createRsvp({
-          id: `rsvp-${status}`,
-          eventId: "event-1",
-          status,
-        });
-        const event = createEvent({
-          id: "event-1",
-          status: "published",
-          startDatetime: "2026-05-01T12:00:00",
-          endDatetime: "2026-05-01T13:00:00",
-        });
-        repository.listRsvpsForUser.mockResolvedValue(Ok([rsvp]));
-        repository.findEventById.mockResolvedValue(Ok(event));
-        repository.upsertRsvp.mockImplementation(async (input: ICreateRsvpInput) => {
-          return Ok({
-            ...rsvp,
-            status: input.status,
-          });
-        });
+    it("cancels a going RSVP by using cancelAndPromoteNext", async () => {
+      const { repository, service } = createHarness();
+      const rsvp = createRsvp({
+        id: "rsvp-going",
+        eventId: "event-1",
+        status: "going",
+      });
+      const event = createEvent({
+        id: "event-1",
+        status: "published",
+        startDatetime: "2026-05-01T12:00:00",
+        endDatetime: "2026-05-01T13:00:00",
+      });
+      repository.listRsvpsForUser.mockResolvedValue(Ok([rsvp]));
+      repository.findEventById.mockResolvedValue(Ok(event));
+      repository.cancelAndPromoteNext.mockResolvedValue(
+        Ok({
+          cancelledRsvp: { ...rsvp, status: "cancelled" as const },
+          promotedRsvp: null,
+        }),
+      );
 
-        const result = await service.cancelRsvp(rsvp.id, member);
+      const result = await service.cancelRsvp(rsvp.id, member);
 
-        expect(result).toEqual(Ok(undefined));
-        expect(repository.listRsvpsForUser).toHaveBeenCalledWith(member.id);
-        expect(repository.findEventById).toHaveBeenCalledWith("event-1");
-        expect(repository.upsertRsvp).toHaveBeenCalledWith({
-          id: rsvp.id,
-          eventId: rsvp.eventId,
-          userId: member.id,
-          status: "cancelled",
+      expect(result).toEqual(Ok(undefined));
+      expect(repository.listRsvpsForUser).toHaveBeenCalledWith(member.id);
+      expect(repository.findEventById).toHaveBeenCalledWith("event-1");
+      expect(repository.cancelAndPromoteNext).toHaveBeenCalledWith(rsvp.id);
+      expect(repository.upsertRsvp).not.toHaveBeenCalled();
+    });
+
+    it("cancels a waitlisted RSVP by upserting a cancelled status", async () => {
+      const { repository, service } = createHarness();
+      const rsvp = createRsvp({
+        id: "rsvp-waitlisted",
+        eventId: "event-1",
+        status: "waitlisted",
+      });
+      const event = createEvent({
+        id: "event-1",
+        status: "published",
+        startDatetime: "2026-05-01T12:00:00",
+        endDatetime: "2026-05-01T13:00:00",
+      });
+      repository.listRsvpsForUser.mockResolvedValue(Ok([rsvp]));
+      repository.findEventById.mockResolvedValue(Ok(event));
+      repository.upsertRsvp.mockImplementation(async (input: ICreateRsvpInput) => {
+        return Ok({
+          ...rsvp,
+          status: input.status,
         });
-      },
-    );
+      });
+
+      const result = await service.cancelRsvp(rsvp.id, member);
+
+      expect(result).toEqual(Ok(undefined));
+      expect(repository.cancelAndPromoteNext).not.toHaveBeenCalled();
+      expect(repository.upsertRsvp).toHaveBeenCalledWith({
+        id: rsvp.id,
+        eventId: rsvp.eventId,
+        userId: member.id,
+        status: "cancelled",
+      });
+    });
 
     it("maps RSVP list dependency failures to UnexpectedDependencyError", async () => {
       const { repository, service } = createHarness();
@@ -447,7 +474,7 @@ describe("RsvpDashboardService", () => {
     it("maps upsert dependency failures to UnexpectedDependencyError", async () => {
       const { repository, service } = createHarness();
       repository.listRsvpsForUser.mockResolvedValue(
-        Ok([createRsvp({ id: "rsvp-1", eventId: "event-1" })]),
+        Ok([createRsvp({ id: "rsvp-1", eventId: "event-1", status: "waitlisted" })]),
       );
       repository.findEventById.mockResolvedValue(
         Ok(createEvent({ id: "event-1", startDatetime: "2026-05-01T12:00:00" })),
@@ -463,6 +490,29 @@ describe("RsvpDashboardService", () => {
         expect(result.value).toEqual({
           name: "UnexpectedDependencyError",
           message: "Unable to save RSVP.",
+        });
+      }
+    });
+
+    it("maps cancelAndPromoteNext dependency failures to UnexpectedDependencyError", async () => {
+      const { repository, service } = createHarness();
+      repository.listRsvpsForUser.mockResolvedValue(
+        Ok([createRsvp({ id: "rsvp-1", eventId: "event-1", status: "going" })]),
+      );
+      repository.findEventById.mockResolvedValue(
+        Ok(createEvent({ id: "event-1", startDatetime: "2026-05-01T12:00:00" })),
+      );
+      repository.cancelAndPromoteNext.mockResolvedValue(
+        Err(new Error("Unable to cancel RSVP.")),
+      );
+
+      const result = await service.cancelRsvp("rsvp-1", member);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.value).toEqual({
+          name: "UnexpectedDependencyError",
+          message: "Unable to cancel RSVP.",
         });
       }
     });
