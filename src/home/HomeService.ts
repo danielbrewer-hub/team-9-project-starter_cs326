@@ -6,7 +6,7 @@ import type {
 } from "./HomeRepository";
 
 export type HomeServiceError = {
-  name: "UnexpectedDependencyError";
+  name: "UnexpectedDependencyError" | "NotFoundError" | "ValidationError";
   message: string;
 };
 
@@ -22,21 +22,97 @@ export interface IHomePageData {
     location: string;
     category: string;
     attendeeCount: number;
+    createdAt: string;
   }>;
+}
+
+export interface IEventUpdateFields {
+  title: string;
+  description: string;
+  location: string;
+  category: string;
+  capacity?: number;
 }
 
 export interface IHomeService {
   getHomePageData(
     actor: IAuthenticatedUser,
   ): Promise<Result<IHomePageData, HomeServiceError>>;
+
+   updateEvent(
+    actor: IAuthenticatedUser,
+    eventId: string,
+    fields: IEventUpdateFields,
+  ): Promise<Result<IHomePageData["recentEvents"][number], HomeServiceError>>;
 }
 
 function UnexpectedDependencyError(message: string): HomeServiceError {
   return { name: "UnexpectedDependencyError", message };
 }
 
+function NotFoundError(message: string): HomeServiceError {
+  return { name: "NotFoundError", message };
+}
+
+function ValidationError(message: string): HomeServiceError {
+  return { name: "ValidationError", message };
+}
+
+
 class HomeService implements IHomeService {
   constructor(private readonly contentRepository: IHomeContentRepository) {}
+
+   async updateEvent(
+    actor: IAuthenticatedUser,
+    eventId: string,
+    fields: IEventUpdateFields,
+  ): Promise<Result<IHomePageData["recentEvents"][number], HomeServiceError>> {
+    const findResult = await this.contentRepository.findEventById(eventId);
+    if (findResult.ok === false) {
+      return Err(UnexpectedDependencyError(findResult.value.message));
+    }
+
+    if (findResult.value === null) {
+      return Err(NotFoundError(`Event ${eventId} not found.`));
+    }
+
+    const updateResult = await this.contentRepository.updateEvent(eventId, {
+      title: fields.title,
+      description: fields.description,
+      location: fields.location,
+      category: fields.category,
+      ...(fields.capacity !== undefined && { capacity: fields.capacity }),
+    });
+
+    if (updateResult.ok === false) {
+      return Err(UnexpectedDependencyError(updateResult.value.message));
+    }
+
+    if (updateResult.value === null) {
+    return Err(NotFoundError(`Event ${eventId} disappeared during update.`));
+  }
+
+    const updated = updateResult.value;
+
+    const rsvpResult = await this.contentRepository.listRsvpsForEvent(eventId);
+    if (rsvpResult.ok === false) {
+      return Err(UnexpectedDependencyError(rsvpResult.value.message));
+    }
+
+    const attendeeCount = rsvpResult.value.filter(
+      (rsvp) => rsvp.status === "going",
+    ).length;
+
+    return Ok({
+      id: updated.id,
+      title: updated.title,
+      status: updated.status,
+      location: updated.location,
+      category: updated.category,
+      attendeeCount,
+      createdAt: updated.createdAt,
+    });
+  }
 
   async getHomePageData(
     actor: IAuthenticatedUser,
@@ -64,8 +140,13 @@ class HomeService implements IHomeService {
         location: event.location,
         category: event.category,
         attendeeCount: rsvpResult.value.filter((rsvp) => rsvp.status === "going").length,
+        createdAt: event.createdAt,
       });
     }
+
+    recentEvents.sort((left, right) =>
+      right.createdAt.localeCompare(left.createdAt),
+    );
 
     const publishedCount = visibleEvents.filter((event) => event.status === "published").length;
     const organizerCount = new Set(visibleEvents.map((event) => event.organizerId)).size;
@@ -80,7 +161,7 @@ class HomeService implements IHomeService {
         `${publishedCount} published events`,
         `${organizerCount} organizers represented`,
       ],
-      recentEvents: recentEvents.slice(0, 5),
+      recentEvents,
     });
   }
 }

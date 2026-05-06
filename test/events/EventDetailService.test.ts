@@ -31,13 +31,21 @@ const otherStaffActor: IActingUser = {
   role: "staff",
 };
 
-function createEvent(overrides: Partial<IEventRecord> = {}): IEventRecord {
+function eventWindowFromNow(daysFromNow: number): Pick<IEventRecord, "startDatetime" | "endDatetime"> {
   const start = new Date();
-  start.setUTCDate(start.getUTCDate() + 7);
-  start.setUTCHours(14, 0, 0, 0);
-  const end = new Date(start);
-  end.setUTCHours(15, 0, 0, 0);
+  start.setDate(start.getDate() + daysFromNow);
+  start.setHours(14, 0, 0, 0);
 
+  const end = new Date(start);
+  end.setHours(start.getHours() + 1);
+
+  return {
+    startDatetime: start.toISOString(),
+    endDatetime: end.toISOString(),
+  };
+}
+
+function createEvent(overrides: Partial<IEventRecord> = {}): IEventRecord {
   return {
     id: "event-published",
     title: "Architecture Review",
@@ -46,8 +54,7 @@ function createEvent(overrides: Partial<IEventRecord> = {}): IEventRecord {
     category: "planning",
     status: "published",
     capacity: 20,
-    startDatetime: start.toISOString(),
-    endDatetime: end.toISOString(),
+    ...eventWindowFromNow(1),
     organizerId: "user-staff",
     createdAt: "2026-04-21T12:00:00.000Z",
     updatedAt: "2026-04-21T12:00:00.000Z",

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { Err, Ok, type Result } from "../lib/result";
-import type { IEventRecord, IHomeContentRepository } from "../home/HomeRepository";
+import type { IEventRecord, IHomeContentRepository, IUpdateEventInput } from "../home/HomeRepository";
 import {
   EventAuthorizationError,
   EventValidationError,
@@ -24,6 +24,12 @@ export interface IEventCreationService {
     input: ICreateEventInput,
     actor: IActingUser,
   ): Promise<Result<IEventRecord, EventCreationError>>;
+
+   finalizeEdits(
+    eventID:string,
+    input:ICreateEventInput,
+    actor: IActingUser,
+  ):Promise<Result<IEventRecord | null,Error>>;
 }
 
 function normalizeRequiredText(
@@ -180,6 +186,38 @@ class EventCreationService implements IEventCreationService {
     }
 
     return Ok(createdResult.value);
+  }
+
+  async finalizeEdits(eventId:string,input:ICreateEventInput, actor: IActingUser): Promise<Result<IEventRecord | null,Error>> {
+      const event = await this.contentRepository.findEventById(eventId);
+      const normalizedInput = normalizeCreateEventInput(input)
+      try{
+        if(!event.ok ||!event.value){
+        throw("Event Not Found")
+      }
+        if(event.value.organizerId!==actor.userId && actor.role!== "admin"){
+          return Err(EventValidationError("Contact the organizer or an admin to edit this event."))
+        }
+        if(!normalizedInput.ok){
+          throw normalizedInput.value
+        }
+        
+        const updateInput:IUpdateEventInput = {
+          title:normalizedInput.value.title,
+          description:normalizedInput.value.description,
+          location:normalizedInput.value.location,
+          category:normalizedInput.value.category,
+          startDatetime:normalizedInput.value.startDatetime,
+          endDatetime:normalizedInput.value.endDatetime
+        }
+        if(input.capacity){
+          updateInput.capacity = normalizedInput.value.capacity;
+        }
+        return this.contentRepository.updateEvent(eventId,updateInput);
+      }
+      catch(error:any){
+        return Err(UnexpectedDependencyError(error));
+      }   
   }
 }
 

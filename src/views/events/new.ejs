@@ -1,32 +1,25 @@
-<section class="max-w-4xl mx-auto p-6 border border-slate-200 rounded-3xl bg-white shadow-lg">
-  <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-    <div>
-      <p class="text-sm uppercase tracking-[0.18em] text-slate-500">Feature 1</p>
-      <h1 class="text-3xl font-bold text-slate-900 mt-1">Create Event</h1>
-      <p class="text-slate-500 mt-3 max-w-2xl">
-        Organizers and admins can draft an event here. New events always start in
-        draft status, and the organizer is taken from the signed-in session.
-      </p>
+<section class="mx-auto max-w-5xl space-y-6">
+  <header class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-100 bg-gradient-to-r from-emerald-50 via-white to-sky-50 px-5 py-6 sm:px-8 sm:py-8">
+      <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div class="max-w-2xl">
+          <p class="text-sm font-semibold text-emerald-700">Organizer workspace</p>
+          <h1 class="mt-2 text-3xl font-bold text-slate-950 sm:text-4xl">Create Event</h1>
+          <p class="mt-3 text-base leading-7 text-slate-600">
+            Draft an event with the details members will see once it is published.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2 text-sm">
+          <span class="rounded-full bg-emerald-100 px-3 py-1.5 font-semibold text-emerald-800 ring-1 ring-emerald-200">
+            Draft by default
+          </span>
+          <span class="rounded-full bg-amber-100 px-3 py-1.5 font-semibold text-amber-800 ring-1 ring-amber-200">
+            Private until published
+          </span>
+        </div>
+      </div>
     </div>
-    <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-      Drafts stay hidden from members until a later publish flow makes them public.
-    </div>
-  </div>
-
-  <div class="mt-6 grid gap-3 md:grid-cols-3">
-    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-      <strong class="block text-slate-800">Required</strong>
-      Title, description, location, category, start time, and end time.
-    </div>
-    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-      <strong class="block text-slate-800">Capacity</strong>
-      Optional, but when present it must be a positive whole number.
-    </div>
-    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-      <strong class="block text-slate-800">Schedule</strong>
-      The end time must be later than the start time.
-    </div>
-  </div>
+  </header>
 
   <%- include("partials/create-event-form", { session, fieldErrors, formError, formValues }) %>
 </section>
