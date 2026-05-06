@@ -127,7 +127,28 @@ class EventDetailService implements IEventDetailService {
         }
       }
 
-      // 6. Return updated event detail
+      // 6. If an attending member cancelled, promote the next waitlisted member.
+      if (existingRsvp?.status === "going" && newStatus === "cancelled") {
+        const eventRsvpsResult = await this.contentRepository.listRsvpsForEvent(event.id);
+        if (eventRsvpsResult.ok === false) {
+          return Err(UnexpectedDependencyError(eventRsvpsResult.value.message));
+        }
+
+        const nextWaitlisted = eventRsvpsResult.value.find((rsvp) => rsvp.status === "waitlisted");
+        if (nextWaitlisted) {
+          const promotionResult = await this.contentRepository.upsertRsvp({
+            id: nextWaitlisted.id,
+            eventId: nextWaitlisted.eventId,
+            userId: nextWaitlisted.userId,
+            status: "going",
+          });
+          if (promotionResult.ok === false) {
+            return Err(UnexpectedDependencyError(promotionResult.value.message));
+          }
+        }
+      }
+
+      // 7. Return updated event detail
       return this.getEventDetail(event.id, actor);
     }
   constructor(
