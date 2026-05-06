@@ -140,28 +140,30 @@ class EventDetailController implements IEventDetailController {
       return;
     }
 
-    const error = result.value;
-    if (error.name === "EventNotFoundError") {
-      res.status(404).render("partials/error", {
-        message: error.message,
+    if (result.ok === false) {
+      const error = result.value;
+      if (error.name === "EventNotFoundError") {
+        res.status(404).render("partials/error", {
+          message: error.message,
+          layout: false,
+        });
+        return;
+      }
+
+      if (error.name === "EventAuthorizationError") {
+        res.status(403).render("partials/error", {
+          message: error.message,
+          layout: false,
+        });
+        return;
+      }
+
+      this.logger.error(`Failed to load attendee list: ${error.message}`);
+      res.status(500).render("partials/error", {
+        message: "Unable to load attendees right now.",
         layout: false,
       });
-      return;
     }
-
-    if (error.name === "EventAuthorizationError") {
-      res.status(403).render("partials/error", {
-        message: error.message,
-        layout: false,
-      });
-      return;
-    }
-
-    this.logger.error(`Failed to load attendee list: ${error.message}`);
-    res.status(500).render("partials/error", {
-      message: "Unable to load attendees right now.",
-      layout: false,
-    });
   }
 
   private toActor(session: IAppBrowserSession): IAuthenticatedUser | null {
@@ -199,6 +201,15 @@ class EventDetailController implements IEventDetailController {
 
     if (result.ok) {
       this.logger.info(`GET /events/${result.value.id} for ${browserSession.browserLabel}`);
+      if(this.isHtmxRequest(req)){
+        res.render("events/detail",{
+          session:browserSession,
+          event:result.value,
+          layout:false
+        }
+        )
+        return;
+      } 
       res.render("events/detail", {
         session: browserSession,
         event: result.value,

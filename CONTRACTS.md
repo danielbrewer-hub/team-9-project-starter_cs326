@@ -295,6 +295,9 @@ RSVP button state:
     canRsvp is true only for member users viewing a published event.
     The button label reflects rsvpStatus and isFull: "RSVP Going", "Join
     Waitlist", "Cancel RSVP", or "Leave Waitlist".
+    The RSVP controls use Alpine.js state initialized from the server-rendered
+    event detail data. Tailwind CSS classes make each state visually distinct:
+    available, full, going, waitlisted, and disabled/pending.
 Toggle access:
     The toggle route requires an authenticated actor. Member users may toggle RSVPs.
     Staff organizers and admins are rejected because organizers do not attend
@@ -312,6 +315,8 @@ Immediate update:
     /events/:id/rsvp/toggle, targets #rsvp-action-area, and swaps the returned
     partial into that element so the button state updates without a full page
     reload.
+    Alpine.js reinitializes from the returned fragment after the HTMX swap and
+    applies a smooth visual transition to the RSVP button and helper text.
     The server returns an HTML fragment for HTMX requests, not JSON and not a
     full page. The fragment includes the updated RSVP action area and may include
     out-of-band HTML for related page fragments such as the attendee count.
