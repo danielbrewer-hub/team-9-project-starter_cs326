@@ -85,6 +85,9 @@ const eventCreationController: IEventCreationController = {
   createEventFromForm: jest.fn(async (_req, res) => {
     res.status(201).send("event created");
   }),
+  finalizeEdits: jest.fn(async (_req, res) => {
+    res.status(200).send("edits finalized");
+  }),
 };
 
 const homeController: IHomeController = {

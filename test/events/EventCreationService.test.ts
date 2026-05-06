@@ -135,8 +135,10 @@ describe("EventCreationService", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.value.name).toBe("EventValidationError");
-      expect(result.value.field).toBe(field);
-      expect(result.value.message).toContain("required");
+      if (result.value.name === "EventValidationError") {
+        expect(result.value.field).toBe(field);
+        expect(result.value.message).toContain("required");
+      }
     }
     expect(repository.createEvent).not.toHaveBeenCalled();
   });

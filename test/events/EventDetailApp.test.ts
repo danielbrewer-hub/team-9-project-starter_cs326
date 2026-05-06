@@ -43,6 +43,19 @@ describe("event detail app layer", () => {
     expect(response.text).toContain("RSVP Going");
   });
 
+  it("renders the authoritative start date with a relative time enhancement", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "user");
+
+    const response = await agent.get(`/events/${DEMO_PUBLISHED_EVENT_ID}`).expect(200);
+
+    expect(response.text).toContain('<time datetime="2026-04-18T14:00:00.000Z">');
+    expect(response.text).toContain("relativeStartTime");
+    expect(response.text).toContain("updateRelativeStartTime");
+    expect(response.text).toContain("Intl.RelativeTimeFormat");
+    expect(response.text).toContain('x-text="relativeStartTime"');
+  });
+
   it("returns 404 for missing event ids", async () => {
     const { app } = createEventAppHarness();
     const agent = await signInAs(app, "user");
@@ -60,7 +73,7 @@ describe("event detail app layer", () => {
 
     expect(response.text).toContain("Project Demo Dry Run");
     expect(response.text).toContain("draft");
-    expect(response.text).toContain("Organizer controls");
+    expect(response.text).toContain("Edit Event");
   });
 
   it("renders draft event details for admins", async () => {
@@ -71,7 +84,7 @@ describe("event detail app layer", () => {
 
     expect(response.text).toContain("Project Demo Dry Run");
     expect(response.text).toContain("draft");
-    expect(response.text).toContain("Organizer controls");
+    expect(response.text).toContain("Edit Event");
   });
 
   it("hides draft events from member users as not found", async () => {

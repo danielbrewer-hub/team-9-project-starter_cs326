@@ -442,6 +442,13 @@ Dashboard grouping:
     when the event is not "past" or "cancelled".
     RSVP records with status "cancelled" or events with status "past" or
     "cancelled" are placed in pastRsvps.
+Dashboard presentation:
+    The dashboard renders upcoming and past/cancelled groups as visually distinct
+    sections using Tailwind CSS. Upcoming RSVP cards use active styling, while
+    past and cancelled RSVP cards use a muted archive treatment.
+    Dashboard items show clear status indicators for rsvpStatus and eventStatus.
+    RSVP status badges visually distinguish going, waitlisted, cancelled, and
+    archived states.
 Dashboard sorting:
     Upcoming RSVPs should be sorted by event startDatetime ascending so the next
     event appears first.
@@ -460,6 +467,9 @@ Cancel RSVP:
     cancelRsvp verifies the RSVP belongs to the actor, rejects already-cancelled
     RSVPs, rejects RSVPs for past or cancelled events, and persists the change by
     upserting the RSVP with status "cancelled".
+    Dashboard cancel controls use Alpine.js to show an inline confirmation prompt
+    before submission. The first cancel click opens the prompt, Confirm submits
+    the existing form, and Keep RSVP closes the prompt without submitting.
 Immediate update:
     The RSVP dashboard renders its upcoming and past/cancelled sections inside
     #rsvp-dashboard-sections. That section listens for the
@@ -472,9 +482,11 @@ Immediate update:
     empty 204 response with HX-Trigger: rsvp-dashboard-refresh. HTMX then asks
     the Feature 7 partial route for the updated #rsvp-dashboard-sections HTML
     fragment with layout disabled.
-    HTMX swaps that refreshed section into the page so upcoming rows,
-    past/cancelled rows, counts, and empty states update without a full page
-    reload.
+    HTMX swaps that refreshed section into the page with view-transition support
+    so matching RSVP cards can animate between sections when the browser supports
+    it. RSVP cards expose stable view-transition names derived from their RSVP
+    ids. Upcoming rows, past/cancelled rows, counts, and empty states update
+    without a full page reload.
     Non-HTMX cancel requests are the fallback path and redirect back to /rsvp.
 
 Factory Helpers:
@@ -713,3 +725,76 @@ Errors:
 Tests:
     The Prisma repository should pass the HomeRepositoryContract test suite by
     adding the Prisma factory as another implementation of IHomeContentRepository.
+
+# Home
+Routes:
+GET /home -> homeController.showHome()
+
+Interfaces:
+IHomePageData: Home page data rendered after authentication:
+    export interface IHomePageData {
+    welcomeTitle: string;
+    welcomeMessage: string;
+    signedInSummary: string;
+    eventSummary: string[];
+    recentEvents: Array<{
+        id: string;
+        title: string;
+        status: string;
+        location: string;
+        category: string;
+        attendeeCount: number;
+        createdAt: string;
+    }>;
+    }
+IHomeController: The controller for the authenticated home page:
+    export interface IHomeController {
+    showHome(req: Request, res: Response): Promise<void>;
+    }
+IHomeService: The service that loads home page data:
+    export interface IHomeService {
+    getHomePageData(
+        actor: IAuthenticatedUser,
+    ): Promise<Result<IHomePageData, HomeServiceError>>;
+    }
+
+Error Type:
+HomeServiceError: Union type for home page failures:
+    export type HomeServiceError = {
+    name: "UnexpectedDependencyError" | "NotFoundError" | "ValidationError";
+    message: string;
+    };
+
+Behavior:
+Home access:
+    The home page requires an authenticated actor. Unauthenticated requests
+    receive an AuthenticationRequired error response.
+Home page data:
+    getHomePageData loads all stored events, filters them through canViewEvent for
+    the actor, and counts only "going" RSVPs for each visible event.
+    eventSummary includes the visible event count, published event count, and
+    number of represented organizers.
+Recent events:
+    recentEvents contains all visible events sorted by createdAt descending so
+    the most recently created event appears first.
+    The home page renders the first five recent events by default. When more than
+    five recent events exist, the remaining events render behind an Alpine.js
+    Show more / Show fewer control below the first five.
+HTTP response mapping:
+    HomeServiceError responses from dependencies use status 500 and render the
+    home page with a page-level error. Successful requests render the home page.
+
+Factory Helpers:
+For HomeController:
+    export function CreateHomeController(
+    service: IHomeService,
+    logger: ILoggingService,
+    ): IHomeController {
+    return new HomeController(service, logger);
+    }
+For HomeService:
+    export function CreateHomeService(
+    contentRepository: IHomeContentRepository,
+    ): IHomeService {
+    return new HomeService(contentRepository);
+    }
