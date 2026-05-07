@@ -222,6 +222,20 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
   async upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>> {
     return Ok(upsertStoredRsvp(input));
   }
+
+ async updateEventStatus(eventId: string, newStatus: EventStatus): Promise<Result<IEventRecord, Error>> {
+    try{
+      const exists = events.get(eventId)
+      if(!exists){
+        throw new Error("Event does not exist.")
+      }
+      exists.status = newStatus;
+      return Ok(exists);
+    }
+    catch(error){
+      return Err(error as Error)
+    }
+  }
 }
 
 export function CreateInMemoryHomeContentRepository(): IHomeContentRepository {
