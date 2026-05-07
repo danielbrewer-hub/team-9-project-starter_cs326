@@ -1,4 +1,4 @@
-import { Ok, type Result } from "../lib/result";
+import { Ok, Err, type Result } from "../lib/result";
 import type {
   IEventAttendeeRecord,
   ICreateEventInput,
