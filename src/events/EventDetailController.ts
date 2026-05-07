@@ -288,11 +288,127 @@ class EventDetailController implements IEventDetailController {
         layout: false,
       });
     }
-    
-    
-  
-   
+  }
+  async publishEvent(req: Request, res: Response): Promise<void> {
+    const browserSession = recordPageView(req.session)
+    const actor = this.toActor(browserSession)
+    const eventId = typeof req.params.id === "string" ? req.params.id : "";
+    if(!actor){
+      this.logger.warn("Blocked unauthenticated publish request");
+      res.status(401).render("partials/error", {
+        message: AuthenticationRequired("Please log in to continue.").message,
+        layout: false,
+      });
+      return;
+    }
+    const event = await this.service.getEventDetail(eventId,{userId:actor.id,role:actor.role});
+    try{
+      if(!event.ok) throw event.value;
+       if(actor.role == "user"){
+        this.logger.warn(`Blocked publication attempt by ${actor.id}`);
+        res.status(403).render("partials/error", {
+          message: "Only admins and the event organizer may publish an event.",
+          layout: false,
+        });
+        return;
+      }
+      if(!event.value.canEdit){
+        this.logger.warn(`Event cannot be published, attempt by ${actor.id}`)
+        res.status(403).render("partials/error",{
+          message: "This event cannot be published, either you are not the event organizer, or this event is not eligible for publication.",
+          layout:false,
+        });
+        return;
+      }
+      if(event.value.status == "draft"){
+        const published = await this.service.publishEvent(eventId,{userId:actor.id,role:actor.role})
+        if(!published.ok){
+          this.logger.warn(`Event with Id ${eventId} could not be published.`);
+          res.status(404).render("partials/error",{
+            message:"Event not found.",
+            layout:false
+          });
+        }
+        return;
+      }
+    }
+    catch(error:any){
+      if (error.name === "EventNotFoundError") {
+        this.logger.warn(`Event detail not found for id ${eventId}`);
+        res.status(404).render("partials/error", {
+          message: error.message,
+          layout: false,
+        });
+        return;
+      }
 
+      this.logger.error(`Failed to load event detail: ${error.message}`);
+      res.status(500).render("partials/error", {
+        message: "Unable to load the event right now.",
+        layout: false,
+      });
+    }
+  }
+  
+  async cancelEvent(req: Request, res: Response): Promise<void> {
+    const browserSession = recordPageView(req.session)
+    const actor = this.toActor(browserSession)
+    const eventId = typeof req.params.id === "string" ? req.params.id : "";
+    if(!actor){
+      this.logger.warn("Blocked unauthenticated cancel request");
+      res.status(401).render("partials/error", {
+        message: AuthenticationRequired("Please log in to continue.").message,
+        layout: false,
+      });
+      return;
+    }
+    const event = await this.service.getEventDetail(eventId,{userId:actor.id,role:actor.role});
+    try{
+      if(!event.ok) throw event.value;
+       if(actor.role == "user"){
+        this.logger.warn(`Blocked cancellation attempt by ${actor.id}`);
+        res.status(403).render("partials/error", {
+          message: "Only admins and the event organizer may cancel an event.",
+          layout: false,
+        });
+        return;
+      }
+      if(!event.value.canCancel){
+        this.logger.warn(`Event cannot be cancelled, attempt by ${actor.id}`)
+        res.status(403).render("partials/error",{
+          message: "This event cannot be cancelled, either you are not the event organizer, or this event is not eligible for cancellation.",
+          layout:false,
+        });
+        return;
+      }
+      if(event.value.status == "draft" || event.value.status == "published"){
+        const cancelled = await this.service.cancelEvent(eventId,{userId:actor.id,role:actor.role});
+        if(!cancelled.ok){
+          this.logger.warn(`Event with Id ${eventId} could not be cancelled.`);
+          res.status(404).render("partials/error",{
+            message:"Event not found.",
+            layout:false
+          });
+        }
+        return;
+      }
+    }
+    catch(error:any){
+      if (error.name === "EventNotFoundError") {
+        this.logger.warn(`Event detail not found for id ${eventId}`);
+        res.status(404).render("partials/error", {
+          message: error.message,
+          layout: false,
+        });
+        return;
+      }
+
+      this.logger.error(`Failed to load event detail: ${error.message}`);
+      res.status(500).render("partials/error", {
+        message: "Unable to load the event right now.",
+        layout: false,
+      });
+    }
   }
 }
 
