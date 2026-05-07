@@ -199,7 +199,7 @@ class EventDetailService implements IEventDetailService {
   async publishEvent(eventId: string, actor: IActingUser): Promise<Result<IEventDetailView, EventDetailError>> {
     const result = await this.contentRepository.updateEventStatus(eventId,"published");
     if(!result.ok){
-      return Err(EventNotFoundError(result.value.message));
+      return Err(EventNotFoundError("Event does not exist."));
     }
     return this.getEventDetail(eventId,actor);
   }
@@ -207,7 +207,7 @@ class EventDetailService implements IEventDetailService {
   async cancelEvent(eventId: string, actor: IActingUser): Promise<Result<IEventDetailView, EventDetailError>> {
     const result = await this.contentRepository.updateEventStatus(eventId,"cancelled");
     if(!result.ok){
-      return Err(EventNotFoundError(result.value.message));
+      return Err(EventNotFoundError("Event does not exist."));
     }
     return this.getEventDetail(eventId,actor);
   }
