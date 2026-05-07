@@ -261,7 +261,15 @@ class EventDetailController implements IEventDetailController {
         return;
       }
       if(event.value.status == "draft"){
-        const published = await this.service.publishEvent(event)
+        const published = await this.service.publishEvent(eventId,{userId:actor.id,role:actor.role})
+        if(!published.ok){
+          this.logger.warn(`Event with Id ${eventId} could not be published.`);
+          res.status(404).render("partials/error",{
+            message:"Event not found.",
+            layout:false
+          });
+        }
+        return;
       }
     }
     catch(error:any){
@@ -314,8 +322,15 @@ class EventDetailController implements IEventDetailController {
         return;
       }
       if(event.value.status == "draft" || event.value.status == "published"){
-        const cancelled = await this.service.cancelEvent(event);
-        if(!cancelled.ok)
+        const cancelled = await this.service.cancelEvent(eventId,{userId:actor.id,role:actor.role});
+        if(!cancelled.ok){
+          this.logger.warn(`Event with Id ${eventId} could not be cancelled.`);
+          res.status(404).render("partials/error",{
+            message:"Event not found.",
+            layout:false
+          });
+        }
+        return;
       }
     }
     catch(error:any){
