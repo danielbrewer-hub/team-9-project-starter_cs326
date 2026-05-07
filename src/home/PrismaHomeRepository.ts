@@ -282,42 +282,48 @@ export async function seedPrismaHomeContentRepository(prisma: PrismaClient): Pro
   }
 
   const eventCount = await prisma.event.count();
-  if (eventCount > 0) {
-    return;
+  const repository = CreatePrismaHomeContentRepository(prisma);
+  if (eventCount === 0) {
+    const seededAt = new Date();
+
+    const publishedEvent = await repository.createEvent({
+      id: DEMO_PUBLISHED_EVENT_ID,
+      title: "Sprint Planning Workshop",
+      description: "Plan work for the next sprint and confirm ownership across the team.",
+      location: "CS Building Room 204",
+      category: "planning",
+      status: "published",
+      capacity: 12,
+      startDatetime: "2026-04-18T14:00:00.000Z",
+      endDatetime: "2026-04-18T15:30:00.000Z",
+      organizerId: DEMO_PUBLISHED_EVENT_ORGANIZER_ID,
+    });
+    if (!publishedEvent.ok) {
+      throw publishedEvent.value;
+    }
+
+    const draftEvent = await repository.createEvent({
+      id: DEMO_DRAFT_EVENT_ID,
+      title: "Project Demo Dry Run",
+      description: "Run through the demo script and capture issues before presentation day.",
+      location: "Online",
+      category: "demo",
+      status: "draft",
+      startDatetime: daysFrom(seededAt, 7, 18),
+      endDatetime: daysFrom(seededAt, 7, 19),
+      organizerId: DEMO_DRAFT_EVENT_ORGANIZER_ID,
+    });
+    if (!draftEvent.ok) {
+      throw draftEvent.value;
+    }
   }
 
-  const seededAt = new Date();
-  const repository = CreatePrismaHomeContentRepository(prisma);
-
-  const publishedEvent = await repository.createEvent({
-    id: DEMO_PUBLISHED_EVENT_ID,
-    title: "Sprint Planning Workshop",
-    description: "Plan work for the next sprint and confirm ownership across the team.",
-    location: "CS Building Room 204",
-    category: "planning",
-    status: "published",
-    capacity: 12,
-    startDatetime: "2026-04-18T14:00:00.000Z",
-    endDatetime: "2026-04-18T15:30:00.000Z",
-    organizerId: DEMO_PUBLISHED_EVENT_ORGANIZER_ID,
-  });
-  if (!publishedEvent.ok) {
+  const publishedEvent = await repository.findEventById(DEMO_PUBLISHED_EVENT_ID);
+  if (publishedEvent.ok === false) {
     throw publishedEvent.value;
   }
-
-  const draftEvent = await repository.createEvent({
-    id: DEMO_DRAFT_EVENT_ID,
-    title: "Project Demo Dry Run",
-    description: "Run through the demo script and capture issues before presentation day.",
-    location: "Online",
-    category: "demo",
-    status: "draft",
-    startDatetime: daysFrom(seededAt, 7, 18),
-    endDatetime: daysFrom(seededAt, 7, 19),
-    organizerId: DEMO_DRAFT_EVENT_ORGANIZER_ID,
-  });
-  if (!draftEvent.ok) {
-    throw draftEvent.value;
+  if (!publishedEvent.value) {
+    return;
   }
 
   const goingRsvp = await repository.upsertRsvp({
