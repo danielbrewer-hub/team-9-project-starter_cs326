@@ -2,6 +2,7 @@ import type { Event, PrismaClient, Rsvp } from "@prisma/client";
 import { DEMO_USERS } from "../auth/InMemoryUserRepository";
 import { Err, Ok, type Result } from "../lib/result";
 import type {
+  EventStatus,
   IEventAttendeeRecord,
   ICreateEventInput,
   ICreateRsvpInput,
