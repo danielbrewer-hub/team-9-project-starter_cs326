@@ -1,5 +1,6 @@
 import { Ok, Err, type Result } from "../lib/result";
 import type {
+  EventStatus,
   IEventAttendeeRecord,
   ICreateEventInput,
   ICreateRsvpInput,
