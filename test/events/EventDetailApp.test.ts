@@ -76,6 +76,20 @@ describe("event detail app layer", () => {
     expect(response.text).toContain("Edit Event");
   });
 
+  it("renders the attendee panel as a hidden Alpine toggle for organizers", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "staff");
+
+    const response = await agent.get(`/events/${DEMO_DRAFT_EVENT_ID}`).expect(200);
+
+    expect(response.text).toContain('x-data="{ attendeesOpen: false }"');
+    expect(response.text).toContain("View attendee list");
+    expect(response.text).toContain("Hide attendee list");
+    expect(response.text).toContain('x-show="attendeesOpen"');
+    expect(response.text).toContain("x-cloak");
+    expect(response.text).toContain(`/events/${DEMO_DRAFT_EVENT_ID}/attendees`);
+  });
+
   it("renders draft event details for admins", async () => {
     const { app } = createEventAppHarness();
     const agent = await signInAs(app, "admin");
