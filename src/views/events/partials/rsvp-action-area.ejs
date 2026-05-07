@@ -24,6 +24,7 @@
         status: '<%= event.rsvpStatus || '' %>',
         isFull: <%= event.isFull ? 'true' : 'false' %>,
         isPending: <%= event.isRsvpPending ? 'true' : 'false' %>,
+        waitlistPosition: <%= typeof event.waitlistPosition === 'number' ? event.waitlistPosition : 'null' %>,
         get state() {
           if (this.status === 'going') return 'going';
           if (this.status === 'waitlisted') return 'waitlisted';
@@ -103,19 +104,25 @@
           'border-indigo-200 bg-indigo-50 text-indigo-800': state === 'full',
           'border-blue-200 bg-blue-50 text-blue-800': state === 'available'
         }"
-        x-text="current.helper"
       >
-        <% if (event.rsvpStatus === 'going') { %>
-          You are attending this event.
-        <% } else if (event.rsvpStatus === 'waitlisted') { %>
-          You are on the waitlist.
-        <% } else { %>
-          <% if (event.isFull) { %>
-            Event is full. You can join the waitlist.
+        <span x-text="current.helper">
+          <% if (event.rsvpStatus === 'going') { %>
+            You are attending this event.
+          <% } else if (event.rsvpStatus === 'waitlisted') { %>
+            You are on the waitlist.
           <% } else { %>
-            You are not RSVPed.
+            <% if (event.isFull) { %>
+              Event is full. You can join the waitlist.
+            <% } else { %>
+              You are not RSVPed.
+            <% } %>
           <% } %>
-        <% } %>
+        </span>
+        <span
+          x-show="state === 'waitlisted' && waitlistPosition !== null"
+        >
+          (Position <span x-text="waitlistPosition"></span>)
+        </span>
       </div>
       <div class="text-xs text-slate-500">
         <strong>Attendance:</strong> <%= event.attendeeCount %> / <%= event.capacity || '∞' %>
