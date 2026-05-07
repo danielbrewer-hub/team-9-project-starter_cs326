@@ -194,7 +194,6 @@ class EventDetailService implements IEventDetailService {
 
     // Find RSVP for this user/event
     let rsvpStatus = null;
-    let waitlistPosition = null;
     let isRsvpPending = false;
     let isFull = false;
     let waitlistPosition: number | null = null;
@@ -203,14 +202,6 @@ class EventDetailService implements IEventDetailService {
       if (rsvpsResult.ok) {
         const userRsvp = rsvpsResult.value.find((rsvp) => rsvp.eventId === event.id);
         rsvpStatus = userRsvp ? userRsvp.status : null;
-      }
-      if (rsvpStatus === "waitlisted") {
-        const eventRsvpsResult = await this.contentRepository.listRsvpsForEvent(event.id);
-        if (eventRsvpsResult.ok) {
-          const waitlisted = eventRsvpsResult.value.filter((rsvp) => rsvp.status === "waitlisted");
-          const index = waitlisted.findIndex((rsvp) => rsvp.userId === actor.userId);
-          waitlistPosition = index >= 0 ? index + 1 : null;
-        }
       }
       const goingCountResult = await this.contentRepository.countGoingRsvpsForEvent(event.id);
       if (goingCountResult.ok) {
