@@ -121,6 +121,7 @@
         <span
           x-show="state === 'waitlisted' && waitlistPosition !== null"
           class="mt-2 inline-flex items-center gap-2 rounded-md border border-violet-300 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-900"
+          data-waitlist-position="<%= typeof event.waitlistPosition === 'number' ? event.waitlistPosition : '' %>"
           x-bind:data-waitlist-position="waitlistPosition"
         >
           <span class="text-violet-700">Queue position</span>
