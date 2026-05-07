@@ -83,10 +83,22 @@ describe("event detail app layer", () => {
     const response = await agent.get(`/events/${DEMO_DRAFT_EVENT_ID}`).expect(200);
 
     expect(response.text).toContain('x-data="{ attendeesOpen: false }"');
+    expect(response.text).toContain('x-on:keydown.escape.window="attendeesOpen = false"');
     expect(response.text).toContain("View attendee list");
     expect(response.text).toContain("Hide attendee list");
+    expect(response.text).toContain(':aria-expanded="attendeesOpen.toString()"');
+    expect(response.text).toContain('aria-controls="attendee-list-container"');
     expect(response.text).toContain('x-show="attendeesOpen"');
     expect(response.text).toContain("x-cloak");
+    expect(response.text).toContain('id="attendee-list-container"');
+    expect(response.text).toContain('role="region"');
+    expect(response.text).toContain(':aria-hidden="(!attendeesOpen).toString()"');
+    expect(response.text).toContain('aria-live="polite"');
+    expect(response.text).toContain('hx-target="#attendee-list-container"');
+    expect(response.text).toContain('hx-swap="innerHTML"');
+    expect(response.text).toContain(
+      `hx-get="/events/${DEMO_DRAFT_EVENT_ID}/attendees"`,
+    );
     expect(response.text).toContain(`/events/${DEMO_DRAFT_EVENT_ID}/attendees`);
   });
 
@@ -109,6 +121,18 @@ describe("event detail app layer", () => {
 
     expect(response.text).toContain("Event not found.");
     expect(response.text).not.toContain("Project Demo Dry Run");
+  });
+
+  it("does not render organizer attendee controls for members", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "user");
+
+    const response = await agent.get(`/events/${DEMO_PUBLISHED_EVENT_ID}`).expect(200);
+
+    expect(response.text).not.toContain("Organizer tools");
+    expect(response.text).not.toContain("View attendee list");
+    expect(response.text).not.toContain("Hide attendee list");
+    expect(response.text).not.toContain("attendee-list-container");
   });
 
   it("maps event detail dependency failures to 500", async () => {
