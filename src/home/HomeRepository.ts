@@ -70,6 +70,10 @@ export interface IHomeContentRepository {
     eventId: string,
     input: IUpdateEventInput,
   ): Promise<Result<IEventRecord | null, Error>>;
+  updateEventStatus(
+    eventId:string,
+    newStatus:EventStatus
+  ):Promise<Result<IEventRecord,Error>>;
   listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>>;
   countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>;
   listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
