@@ -89,8 +89,8 @@ class HomeService implements IHomeService {
     }
 
     if (updateResult.value === null) {
-    return Err(NotFoundError(`Event ${eventId} disappeared during update.`));
-  }
+      return Err(NotFoundError(`Event ${eventId} disappeared during update.`));
+    }
 
     const updated = updateResult.value;
 

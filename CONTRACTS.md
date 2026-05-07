@@ -522,6 +522,102 @@ In HomeRepository.ts:
 
 # Feature 12 (Allen)
 
+Attendee list access and rendering:
+From the event detail page, attendee identities are visible only to:
+    The event organizer (event.organizerId matches actor.userId), or
+    Any admin user.
+Members and non-organizer staff users are denied attendee-list access.
+
+Route:
+GET /events/:id/attendees:
+    Requires an authenticated session.
+    Uses EventDetailController.showAttendees.
+    For HTMX requests (HX-Request: true), returns the attendee-list partial only.
+    For non-HTMX requests, returns a full attendee-list page fallback.
+    Returns:
+        200 on success,
+        403 for unauthorized actor,
+        404 when event id is invalid or missing,
+        500 for dependency failures.
+
+EventDetailService contract additions:
+In EventDetailService.ts:
+  getAttendeeList(
+    eventId: string,
+    actor: IActingUser,
+  ): Promise<Result<IEventAttendeeListView, EventAttendeeListError>>;
+
+EventTypes:
+AttendeeListStatus:
+    "going" | "waitlisted" | "cancelled"
+IEventAttendeeEntry:
+    userId: string
+    displayName: string
+    status: AttendeeListStatus
+    rsvpCreatedAt: string
+IEventAttendeeListView:
+    eventId: string
+    attendees: Record<AttendeeListStatus, IEventAttendeeEntry[]>
+
+Service behavior:
+getAttendeeList:
+    Trims and validates eventId; blank event ids return EventNotFoundError.
+    Loads event and returns EventNotFoundError when missing.
+    Enforces authorization (organizer or admin only), otherwise EventAuthorizationError.
+    Loads attendee rows from HomeRepository attendee projection.
+    Groups rows into:
+        attendees.going
+        attendees.waitlisted
+        attendees.cancelled
+    Sorts each group by RSVP createdAt ascending.
+    Returns IEventAttendeeListView.
+
+Repository contract additions:
+In HomeRepository.ts:
+  interface IEventAttendeeRecord extends IRsvpRecord {
+    displayName: string;
+  }
+  listRsvpAttendeesForEvent(
+    eventId: string,
+  ): Promise<Result<IEventAttendeeRecord[], Error>>;
+
+Repository behavior:
+listRsvpAttendeesForEvent:
+    Returns RSVP rows for the event joined with attendee display names.
+    Rows are sorted by createdAt ascending.
+    Preserves RSVP fields (id, eventId, userId, status, createdAt) and adds
+    displayName.
+
+InMemoryHomeRepository implementation:
+    Resolves displayName by matching RSVP userId to in-memory demo users and
+    returns attendee rows sorted by createdAt ascending.
+
+PrismaHomeRepository implementation:
+    Resolves displayName via Prisma relation join:
+        rsvp include user select displayName
+    Maps joined rows to IEventAttendeeRecord and returns createdAt as ISO
+    strings.
+
+UI behavior:
+Event detail page includes an attendee-list load action for authorized users.
+HTMX button:
+    GET /events/:id/attendees
+    target: #attendee-list-container
+    swap: innerHTML
+Partial shows three grouped sections:
+    Attending, Waitlisted, Cancelled
+Each entry shows attendee displayName and RSVP createdAt timestamp.
+
+Tests:
+EventDetailService tests cover:
+    organizer/admin authorized access,
+    member/non-organizer staff denial,
+    grouping and per-group ordering.
+EventDetailApp tests cover:
+    GET /events/:id/attendees authorized HTMX access and unauthorized denial.
+HomeRepositoryContract tests cover:
+    listRsvpAttendeesForEvent behavior for both in-memory and Prisma implementations.
+
 # Repository
 
 Prisma structure:

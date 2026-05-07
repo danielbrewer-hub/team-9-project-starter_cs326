@@ -2,6 +2,7 @@ import type { Event, PrismaClient, Rsvp } from "@prisma/client";
 import { DEMO_USERS } from "../auth/InMemoryUserRepository";
 import { Err, Ok, type Result } from "../lib/result";
 import type {
+  IEventAttendeeRecord,
   ICreateEventInput,
   ICreateRsvpInput,
   IEventRecord,
@@ -44,6 +45,15 @@ function toRsvpRecord(rsvp: Rsvp): IRsvpRecord {
     userId: rsvp.userId,
     status: rsvp.status as IRsvpRecord["status"],
     createdAt: rsvp.createdAt.toISOString(),
+  };
+}
+
+function toRsvpAttendeeRecord(
+  rsvp: Rsvp & { user: { displayName: string } },
+): IEventAttendeeRecord {
+  return {
+    ...toRsvpRecord(rsvp),
+    displayName: rsvp.user.displayName,
   };
 }
 
@@ -145,6 +155,25 @@ export class PrismaHomeContentRepository implements IHomeContentRepository {
         orderBy: { createdAt: "asc" },
       });
       return Ok(rsvps.map(toRsvpRecord));
+    } catch (error) {
+      return Err(toError(error));
+    }
+  }
+
+  async listRsvpAttendeesForEvent(eventId: string): Promise<Result<IEventAttendeeRecord[], Error>> {
+    try {
+      const rsvps = await this.prisma.rsvp.findMany({
+        where: { eventId },
+        orderBy: { createdAt: "asc" },
+        include: {
+          user: {
+            select: {
+              displayName: true,
+            },
+          },
+        },
+      });
+      return Ok(rsvps.map(toRsvpAttendeeRecord));
     } catch (error) {
       return Err(toError(error));
     }

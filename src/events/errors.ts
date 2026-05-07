@@ -32,6 +32,11 @@ export type EventRsvpToggleError =
   | EventValidationError
   | EventUnexpectedDependencyError;
 
+export type EventAttendeeListError =
+  | EventNotFoundError
+  | EventAuthorizationError
+  | EventUnexpectedDependencyError;
+
 export function EventValidationError(message: string, field?: string): EventValidationError {
   return {
     name: "EventValidationError",

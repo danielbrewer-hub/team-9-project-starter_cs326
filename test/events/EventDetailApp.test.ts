@@ -1,17 +1,26 @@
 import request from "supertest";
 import type { IEventDetailService } from "../../src/events/EventDetailService";
 import { UnexpectedDependencyError } from "../../src/events/errors";
+import type { IEventAttendeeListView } from "../../src/events/EventTypes";
 import {
   DEMO_DRAFT_EVENT_ID,
   DEMO_PUBLISHED_EVENT_ID,
 } from "../../src/home/HomeRepository";
-import { Err } from "../../src/lib/result";
+import { Err, Ok } from "../../src/lib/result";
 import {
   createEventAppHarness,
   signInAs,
 } from "../support/eventAppHarness";
 
 describe("event detail app layer", () => {
+  const emptyAttendeeList: IEventAttendeeListView = {
+    eventId: DEMO_PUBLISHED_EVENT_ID,
+    attendees: {
+      going: [],
+      waitlisted: [],
+      cancelled: [],
+    },
+  };
   it("redirects unauthenticated detail requests to login", async () => {
     const { app } = createEventAppHarness();
 
@@ -67,6 +76,32 @@ describe("event detail app layer", () => {
     expect(response.text).toContain("Edit Event");
   });
 
+  it("renders the attendee panel as a hidden Alpine toggle for organizers", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "staff");
+
+    const response = await agent.get(`/events/${DEMO_DRAFT_EVENT_ID}`).expect(200);
+
+    expect(response.text).toContain('x-data="{ attendeesOpen: false }"');
+    expect(response.text).toContain('x-on:keydown.escape.window="attendeesOpen = false"');
+    expect(response.text).toContain("View attendee list");
+    expect(response.text).toContain("Hide attendee list");
+    expect(response.text).toContain(':aria-expanded="attendeesOpen.toString()"');
+    expect(response.text).toContain('aria-controls="attendee-list-container"');
+    expect(response.text).toContain('x-show="attendeesOpen"');
+    expect(response.text).toContain("x-cloak");
+    expect(response.text).toContain('id="attendee-list-container"');
+    expect(response.text).toContain('role="region"');
+    expect(response.text).toContain(':aria-hidden="(!attendeesOpen).toString()"');
+    expect(response.text).toContain('aria-live="polite"');
+    expect(response.text).toContain('hx-target="#attendee-list-container"');
+    expect(response.text).toContain('hx-swap="innerHTML"');
+    expect(response.text).toContain(
+      `hx-get="/events/${DEMO_DRAFT_EVENT_ID}/attendees"`,
+    );
+    expect(response.text).toContain(`/events/${DEMO_DRAFT_EVENT_ID}/attendees`);
+  });
+
   it("renders draft event details for admins", async () => {
     const { app } = createEventAppHarness();
     const agent = await signInAs(app, "admin");
@@ -88,12 +123,25 @@ describe("event detail app layer", () => {
     expect(response.text).not.toContain("Project Demo Dry Run");
   });
 
+  it("does not render organizer attendee controls for members", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "user");
+
+    const response = await agent.get(`/events/${DEMO_PUBLISHED_EVENT_ID}`).expect(200);
+
+    expect(response.text).not.toContain("Organizer tools");
+    expect(response.text).not.toContain("View attendee list");
+    expect(response.text).not.toContain("Hide attendee list");
+    expect(response.text).not.toContain("attendee-list-container");
+  });
+
   it("maps event detail dependency failures to 500", async () => {
     const eventDetailService: jest.Mocked<IEventDetailService> = {
       getEventDetail: jest.fn().mockResolvedValue(
         Err(UnexpectedDependencyError("detail dependency failed")),
       ),
       toggleRsvp: jest.fn(),
+      getAttendeeList: jest.fn().mockResolvedValue(Ok(emptyAttendeeList)),
     };
     const { app } = createEventAppHarness({ eventDetailService });
     const agent = await signInAs(app, "user");
@@ -109,5 +157,72 @@ describe("event detail app layer", () => {
         role: "user",
       },
     );
+  });
+
+  describe("GET /events/:id/attendees", () => {
+    it.each([
+      ["organizer", "staff", "event-staff-organized"],
+      ["admin", "admin", DEMO_PUBLISHED_EVENT_ID],
+    ] as const)(
+      "allows the %s to fetch attendee list via HTMX",
+      async (_label, role, eventId) => {
+        const { app, contentRepository } = createEventAppHarness();
+        if (role === "staff") {
+          await contentRepository.createEvent({
+            id: eventId,
+            title: "Staff Organized Event",
+            description: "Owned by the signed-in staff organizer.",
+            location: "CS Building Room 202",
+            category: "planning",
+            status: "published",
+            capacity: 10,
+            startDatetime: "2026-05-04T14:00:00.000Z",
+            endDatetime: "2026-05-04T15:00:00.000Z",
+            organizerId: "user-staff",
+          });
+        }
+        const agent = await signInAs(app, role);
+
+        const response = await agent
+          .get(`/events/${eventId}/attendees`)
+          .set("HX-Request", "true")
+          .expect(200);
+
+        expect(response.text).toContain("Attendee List");
+        expect(response.text).toContain("Attending");
+        expect(response.text).toContain("Waitlisted");
+        expect(response.text).toContain("Cancelled");
+      },
+    );
+
+    it.each([
+      ["member", "user"],
+      ["non-organizer staff", "staff"],
+    ] as const)("denies attendee list access for %s without ownership/admin rights", async (_label, role) => {
+      const { app, contentRepository } = createEventAppHarness();
+      if (role === "staff") {
+        await contentRepository.createEvent({
+          id: "event-other-organizer",
+          title: "Other Organizer Event",
+          description: "Owned by another organizer.",
+          location: "CS Building Room 201",
+          category: "planning",
+          status: "published",
+          capacity: 10,
+          startDatetime: "2026-05-03T14:00:00.000Z",
+          endDatetime: "2026-05-03T15:00:00.000Z",
+          organizerId: "user-admin",
+        });
+      }
+      const agent = await signInAs(app, role);
+
+      const eventId = role === "staff" ? "event-other-organizer" : DEMO_PUBLISHED_EVENT_ID;
+      const response = await agent
+        .get(`/events/${eventId}/attendees`)
+        .set("HX-Request", "true")
+        .expect(403);
+
+      expect(response.text).toContain("Only the event organizer or an admin may view attendees.");
+    });
   });
 });
