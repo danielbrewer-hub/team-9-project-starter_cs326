@@ -37,6 +37,15 @@ export interface IEventDetailService {
     eventId: string,
     actor: IActingUser,
   ): Promise<Result<IEventAttendeeListView, EventAttendeeListError>>;
+
+  publishEvent(
+    eventId:string,
+    actor:IActingUser,
+  ):Promise<Result<IEventDetailView, EventDetailError>>;
+
+  cancelEvent( eventId:string,
+    actor:IActingUser,
+  ):Promise<Result<IEventDetailView, EventDetailError>>;
 }
 
 function normalizeEventId(eventId: string): string | null {
@@ -285,6 +294,23 @@ class EventDetailService implements IEventDetailService {
       isFull,
     });
   }
+
+  async publishEvent(eventId: string, actor: IActingUser): Promise<Result<IEventDetailView, EventDetailError>> {
+    const result = await this.contentRepository.updateEventStatus(eventId,"published");
+    if(!result.ok){
+      return Err(EventNotFoundError("Event does not exist."));
+    }
+    return this.getEventDetail(eventId,actor);
+  }
+
+  async cancelEvent(eventId: string, actor: IActingUser): Promise<Result<IEventDetailView, EventDetailError>> {
+    const result = await this.contentRepository.updateEventStatus(eventId,"cancelled");
+    if(!result.ok){
+      return Err(EventNotFoundError("Event does not exist."));
+    }
+    return this.getEventDetail(eventId,actor);
+  }
+  
 }
 
 export function CreateEventDetailService(

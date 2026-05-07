@@ -2,6 +2,7 @@ import type { Event, PrismaClient, Rsvp } from "@prisma/client";
 import { DEMO_USERS } from "../auth/InMemoryUserRepository";
 import { Err, Ok, type Result } from "../lib/result";
 import type {
+  EventStatus,
   IEventAttendeeRecord,
   ICreateEventInput,
   ICreateRsvpInput,
@@ -144,6 +145,26 @@ export class PrismaHomeContentRepository implements IHomeContentRepository {
       });
       return Ok(toEventRecord(event));
     } catch (error) {
+      return Err(toError(error));
+    }
+  }
+
+  async updateEventStatus(eventId:string,newStatus:EventStatus):Promise<Result<IEventRecord,Error>>{
+    try{
+      const exists = await this.prisma.event.findUnique({
+        where:{id:eventId}
+      });
+      if(!exists){
+        throw new Error("Event does not exist.");
+      }
+
+      const updated = await this.prisma.event.update({
+        where:{id:eventId},
+        data: {status:newStatus}
+      });
+      return Ok(toEventRecord(updated));
+    }
+    catch(error){
       return Err(toError(error));
     }
   }
