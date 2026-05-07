@@ -353,6 +353,59 @@ In HomeRepository.ts:
 # Feature 5 (Dan)
 
 # Feature 6 (Aditya)
+Routes:
+GET /events -> eventController.list(req, res)
+
+Interfaces:
+EventCategory: Union type for a valid event category:
+    export type EventCategory = 'social' | 'educational' | 'volunteer' | 'sports' | 'arts';
+VALID_CATEGORIES: Array of all valid EventCategory values:
+    export const VALID_CATEGORIES: EventCategory[];
+Timeframe: Union type for a valid timeframe filter:
+    export type Timeframe = 'all' | 'this-week' | 'this-weekend';
+VALID_TIMEFRAMES: Readonly tuple of all valid Timeframe values:
+    export const VALID_TIMEFRAMES: readonly ['all', 'this-week', 'this-weekend'];
+IEventController: The controller for the event list and search routes:
+    export interface IEventController {
+    list(req: Request, res: Response): Promise<void>;
+    search(req: Request, res: Response): Promise<void>;
+    }
+
+Behavior:
+Filter access:
+    The /events route requires an authenticated actor.
+    Unauthenticated requests are redirected to /login.
+Filter logic:
+    Category filter accepts only values in VALID_CATEGORIES; unknown values are ignored.
+    Timeframe filter accepts only values in VALID_TIMEFRAMES; unknown values default to 'all'.
+    'all' returns all published events whose startDatetime is >= now, sorted ascending.
+    'this-week' returns published events whose startDatetime falls within the next 7 days.
+    'this-weekend' returns published events whose startDatetime falls on the upcoming
+    Saturday-Sunday window (midnight Saturday to midnight Monday).
+    Category and timeframe filters are applied together when both are present.
+HTMX partial update:
+    When the HX-Request header is present the controller renders only the
+    events/_event_list partial with layout disabled so HTMX can swap the
+    list in place without a full page reload.
+    Non-HTMX requests render the full events/list page.
+HTTP response mapping:
+    Successful filter requests return status 200 with the event list or partial.
+    Unexpected repository failures return status 500 and render an error partial.
+
+Factory Helpers:
+For EventController:
+    export function CreateEventController(service: EventService): IEventController {
+    return new EventController(service);
+    }
+For EventService:
+    export function CreateEventService(repo: IHomeContentRepository): EventService {
+    return new EventService(repo);
+    }
+
+Other Helpers:
+In HomeRepository.ts:
+  listEvents(): Promise<Result<IEventRecord[], Error>>;
+    Returns all stored event records so the service can filter in memory.
 
 # Feature 7 (Isik)
 Routes:
@@ -519,6 +572,60 @@ In HomeRepository.ts:
 # Feature 9 (Allen)
 
 # Feature 10 (Aditya)
+Routes:
+GET /events/search -> eventController.search(req, res)
+    Must be registered before /events/:id so Express does not treat the
+    literal string "search" as an event ID parameter.
+
+Interfaces:
+InvalidSearchError: Returned when the search query exceeds the allowed length:
+    export interface InvalidSearchError {
+    name: 'InvalidSearchError';
+    message: string;
+    }
+IEventController: (shared with Feature 6)
+    export interface IEventController {
+    list(req: Request, res: Response): Promise<void>;
+    search(req: Request, res: Response): Promise<void>;
+    }
+
+Behavior:
+Search access:
+    The /events/search route requires an authenticated actor.
+    Unauthenticated requests are redirected to /login.
+Query validation:
+    The q query parameter is trimmed before use.
+    Queries exceeding 200 characters return InvalidSearchError rendered on the
+    events/list page with status 200 and an empty event list.
+Search logic:
+    Only published events whose endDatetime is > now are eligible.
+    An empty query returns all eligible events sorted by startDatetime ascending.
+    A non-empty query performs a case-insensitive substring match against
+    title, description, and location. An event is included if any field matches.
+    Results are sorted by startDatetime ascending.
+HTMX partial update:
+    When the HX-Request header is present the controller renders only the
+    events/_event_list partial with layout disabled so HTMX can swap the
+    list in place without a full page reload.
+    Non-HTMX requests render the full events/list page with search results.
+HTTP response mapping:
+    InvalidSearchError responses render the list page with an inline error message.
+    Successful search requests return status 200 with the result list or partial.
+
+Factory Helpers:
+For EventController:
+    export function CreateEventController(service: EventService): IEventController {
+    return new EventController(service);
+    }
+For EventService:
+    export function CreateEventService(repo: IHomeContentRepository): EventService {
+    return new EventService(repo);
+    }
+
+Other Helpers:
+In HomeRepository.ts:
+  listEvents(): Promise<Result<IEventRecord[], Error>>;
+    Returns all stored event records so the service can search in memory.
 
 # Feature 12 (Allen)
 
