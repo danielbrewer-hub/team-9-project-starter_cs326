@@ -8,6 +8,20 @@
   hx-target="#event-content"
   hx-swap="innerHTML"
 >Edit Event</button>
+  <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+  <button
+  type="button"
+  class="w-full rounded-lg px-4 py-2 shadow focus:outline-none"
+  hx-put="/events/<%= event.id %>/publish"
+  hx-swap="innerHTML"
+>Publish Event</button>
+   <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+  <button
+  type="button"
+  class="w-full rounded-lg px-4 py-2 shadow focus:outline-none"
+  hx-put="/events/<%= event.id %>/cancel"
+  hx-swap="innerHTML"
+>Cancel Event</button>
 </div>
   <% } %>
 
