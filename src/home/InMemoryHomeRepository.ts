@@ -1,5 +1,6 @@
-import { Ok, type Result } from "../lib/result";
+import { Ok, Err, type Result } from "../lib/result";
 import type {
+  EventStatus,
   ICreateEventInput,
   ICreateRsvpInput,
   IEventRecord,
@@ -187,6 +188,20 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
     input: IUpdateEventInput,
   ): Promise<Result<IEventRecord | null, Error>> {
     return Ok(updateStoredEvent(eventId, input));
+  }
+
+  async updateEventStatus(eventId: string, newStatus: EventStatus): Promise<Result<IEventRecord, Error>> {
+    try{
+      const exists = events.get(eventId)
+      if(!exists){
+        throw new Error("Event does not exist.")
+      }
+      exists.status = newStatus;
+      return Ok(exists);
+    }
+    catch(error){
+      return Err(error as Error)
+    }
   }
 
   async listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>> {

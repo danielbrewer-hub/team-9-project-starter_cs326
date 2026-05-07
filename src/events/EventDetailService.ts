@@ -10,6 +10,7 @@ import {
 } from "./errors";
 import type { IActingUser, IEventDetailView } from "./EventTypes";
 import { canManageEvent, canViewEvent } from "./EventVisibility";
+import { eventTestUsers } from "../../test/support/eventAppHarness";
 
 type EventPermissionFlags = Pick<IEventDetailView, "canEdit" | "canCancel" | "canRsvp">;
 
@@ -26,6 +27,15 @@ export interface IEventDetailService {
     eventId: string,
     actor: IActingUser,
   ): Promise<Result<IEventDetailView, EventRsvpToggleError>>;
+
+  publishEvent(
+    eventId:string,
+    actor:IActingUser,
+  ):Promise<Result<IEventDetailView, EventDetailError>>;
+
+  cancelEvent( eventId:string,
+    actor:IActingUser,
+  ):Promise<Result<IEventDetailView, EventDetailError>>;
 }
 
 function normalizeEventId(eventId: string): string | null {
@@ -184,6 +194,22 @@ class EventDetailService implements IEventDetailService {
       isRsvpPending,
       isFull,
     });
+  }
+
+  async publishEvent(eventId: string, actor: IActingUser): Promise<Result<IEventDetailView, EventDetailError>> {
+    const result = await this.contentRepository.updateEventStatus(eventId,"published");
+    if(!result.ok){
+      return Err(EventNotFoundError(result.value.message));
+    }
+    return this.getEventDetail(eventId,actor);
+  }
+
+  async cancelEvent(eventId: string, actor: IActingUser): Promise<Result<IEventDetailView, EventDetailError>> {
+    const result = await this.contentRepository.updateEventStatus(eventId,"cancelled");
+    if(!result.ok){
+      return Err(EventNotFoundError(result.value.message));
+    }
+    return this.getEventDetail(eventId,actor);
   }
 }
 
