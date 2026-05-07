@@ -37,6 +37,15 @@ export interface IEventDetailService {
     eventId: string,
     actor: IActingUser,
   ): Promise<Result<IEventAttendeeListView, EventAttendeeListError>>;
+
+  publishEvent(
+    eventId:string,
+    actor:IActingUser,
+  ):Promise<Result<IEventDetailView, EventDetailError>>;
+
+  cancelEvent( eventId:string,
+    actor:IActingUser,
+  ):Promise<Result<IEventDetailView, EventDetailError>>;
 }
 
 function normalizeEventId(eventId: string): string | null {
