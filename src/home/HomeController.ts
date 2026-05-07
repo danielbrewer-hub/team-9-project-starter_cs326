@@ -11,8 +11,6 @@ import type { IHomeService } from "./HomeService";
 
 export interface IHomeController {
   showHome(req: Request, res: Response): Promise<void>;
-  publishEvent(req: Request, res: Response): Promise<void>;
-  cancelEvent(req: Request, res: Response): Promise<void>;
 }
 
 class HomeController implements IHomeController {
@@ -65,79 +63,6 @@ class HomeController implements IHomeController {
       pageError: null,
       home: result.value,
     });
-  }
-
-  async publishEvent(req: Request, res: Response): Promise<void> {
-    const browserSession = recordPageView(req.session);
-    const actor = this.toActor(browserSession);
-
-    if (!actor) {
-      res.status(401).render("partials/error", {
-        message: AuthenticationRequired("Please log in to continue.").message,
-        layout: false,
-      });
-      return;
-    }
-
-    const result = await this.service.publishEvent(actor, req.params.id);
-
-    if (result.ok === false) {
-      const status = this.errorStatus(result.value.name);
-      res.status(status).render("partials/error", {
-        message: result.value.message,
-        layout: false,
-      });
-      return;
-    }
-
-    this.logger.info(`PUT /events/${req.params.id}/publish by ${actor.email}`);
-    res.render("partials/eventDetail", {
-      event: result.value,
-      session: browserSession,
-      layout: false,
-    });
-  }
-
-  async cancelEvent(req: Request, res: Response): Promise<void> {
-    const browserSession = recordPageView(req.session);
-    const actor = this.toActor(browserSession);
-
-    if (!actor) {
-      res.status(401).render("partials/error", {
-        message: AuthenticationRequired("Please log in to continue.").message,
-        layout: false,
-      });
-      return;
-    }
-
-    const result = await this.service.cancelEvent(actor, req.params.id);
-
-    if (result.ok === false) {
-      const status = this.errorStatus(result.value.name);
-      res.status(status).render("partials/error", {
-        message: result.value.message,
-        layout: false,
-      });
-      return;
-    }
-
-    this.logger.info(`PUT /events/${req.params.id}/cancel by ${actor.email}`);
-    res.render("partials/eventDetail", {
-      event: result.value,
-      session: browserSession,
-      layout: false,
-    });
-  }
-
-  private errorStatus(name: HomeServiceError["name"]): number {
-    const map: Record<HomeServiceError["name"], number> = {
-      NotFoundError: 404,
-      ForbiddenError: 403,
-      InvalidTransitionError: 409,
-      ValidationError: 422,
-      UnexpectedDependencyError: 500,
-    };
-    return map[name] ?? 500;
   }
 }
 
