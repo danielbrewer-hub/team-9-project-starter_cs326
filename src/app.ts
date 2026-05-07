@@ -273,6 +273,20 @@ class ExpressApp implements IApp {
       await this.eventCreationController.finalizeEdits(req,res)
     }));
 
+    this.app.put("/events/:id/publish",
+      asyncHandler(async (req,res)=>{
+        if(!this.requireAuthenticated(req,res)) return;
+        await this.eventDetailController.publishEvent(req,res);
+      }),
+    );
+
+    this.app.put("/events/:id/cancel",
+      asyncHandler(async (req,res)=>{
+        if(!this.requireAuthenticated(req,res)) return;
+        await this.eventDetailController.cancelEvent(req,res);
+      }),
+    );
+
     this.app.get(
       "/events/:id",
       asyncHandler(async (req, res) => {
@@ -328,26 +342,6 @@ class ExpressApp implements IApp {
       }),
     );
 
-        
-    this.app.put(
-      "/events/:id/publish",
-      asyncHandler(async (req, res) => {
-        if (!this.requireRole(req, res, ["admin", "staff"], "Only staff and admins may publish events.")) {
-          return;
-        }
-        await this.homeController.publishEvent(req, res);
-      }),
-    );
-
-    this.app.put(
-      "/events/:id/cancel",
-      asyncHandler(async (req, res) => {
-        if (!this.requireRole(req, res, ["admin", "staff"], "Only staff and admins may cancel events.")) {
-          return;
-        }
-        await this.homeController.cancelEvent(req, res);
-      }),
-    );
 
     // ── Error handler ────────────────────────────────────────────────
 
@@ -370,20 +364,6 @@ class ExpressApp implements IApp {
 
     }),
   );
-
-    this.app.patch("/events/:id/publish",
-      asyncHandler(async (req,res)=>{
-        if(!this.requireAuthenticated(req,res)) return;
-        await this.eventDetailController.publishEvent(req,res);
-      }),
-    );
-
-    this.app.patch("/events/:id/cancel",
-      asyncHandler(async (req,res)=>{
-        if(!this.requireAuthenticated(req,res)) return;
-        await this.eventDetailController.cancelEvent(req,res);
-      }),
-    );
   
   }
 
