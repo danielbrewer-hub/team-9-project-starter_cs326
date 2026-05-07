@@ -199,24 +199,28 @@ class EventDetailController implements IEventDetailController {
       return;
     }
 
-    if (result.value.name === "EventAuthorizationError") {
-      res.status(403).render("partials/error", {
-        message: result.value.message,
+    if (result.ok === false) {
+      const error = result.value;
+      if (error.name === "EventAuthorizationError") {
+        res.status(403).render("partials/error", {
+          message: error.message,
+          layout: false,
+        });
+        return;
+      }
+      if (error.name === "EventNotFoundError") {
+        res.status(404).render("partials/error", {
+          message: error.message,
+          layout: false,
+        });
+        return;
+      }
+      res.status(500).render("partials/error", {
+        message: "Unable to load attendee list right now.",
         layout: false,
       });
       return;
     }
-    if (result.value.name === "EventNotFoundError") {
-      res.status(404).render("partials/error", {
-        message: result.value.message,
-        layout: false,
-      });
-      return;
-    }
-    res.status(500).render("partials/error", {
-      message: "Unable to load attendee list right now.",
-      layout: false,
-    });
   }
   async showEditForm(req:Request,res:Response):Promise<void> {
     const browserSession = recordPageView(req.session);
