@@ -31,6 +31,13 @@ export interface IRsvpRecord {
   createdAt: string;
 }
 
+export interface IAttendeeListRecord {
+  userId: string;
+  displayName: string;
+  status: RsvpStatus;
+  createdAt: string;
+}
+
 export interface ICreateEventInput {
   id: string;
   title: string;
@@ -71,7 +78,12 @@ export interface IHomeContentRepository {
     input: IUpdateEventInput,
   ): Promise<Result<IEventRecord | null, Error>>;
   listRsvpsForEvent(eventId: string): Promise<Result<IRsvpRecord[], Error>>;
+  listAttendeesForEvent(eventId: string): Promise<Result<IAttendeeListRecord[], Error>>;
   countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>>;
   listRsvpsForUser(userId: string): Promise<Result<IRsvpRecord[], Error>>;
   upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>>;
+  cancelGoingRsvpAndPromoteNextWaitlisted(
+    eventId: string,
+    userId: string,
+  ): Promise<Result<{ cancelledRsvpId: string; promotedRsvpId: string | null }, Error>>;
 }

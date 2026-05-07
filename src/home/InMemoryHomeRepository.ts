@@ -1,5 +1,7 @@
 import { Ok, type Result } from "../lib/result";
+import { DEMO_USERS } from "../auth/InMemoryUserRepository";
 import type {
+  IAttendeeListRecord,
   ICreateEventInput,
   ICreateRsvpInput,
   IEventRecord,
@@ -70,6 +72,20 @@ function listStoredRsvpsForEvent(eventId: string): IRsvpRecord[] {
     .filter((rsvp) => rsvp.eventId === eventId)
     .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
     .map(cloneRsvp);
+}
+
+function listStoredAttendeesForEvent(eventId: string): IAttendeeListRecord[] {
+  return Array.from(rsvps.values())
+    .filter((rsvp) => rsvp.eventId === eventId)
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    .map((rsvp) => ({
+      // Keep in-memory and Prisma behavior aligned with auth display names.
+      userId: rsvp.userId,
+      displayName:
+        DEMO_USERS.find((user) => user.id === rsvp.userId)?.displayName ?? rsvp.userId,
+      status: rsvp.status,
+      createdAt: rsvp.createdAt,
+    }));
 }
 
 function listStoredRsvpsForUser(userId: string): IRsvpRecord[] {
@@ -189,6 +205,10 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
     return Ok(listStoredRsvpsForEvent(eventId));
   }
 
+  async listAttendeesForEvent(eventId: string): Promise<Result<IAttendeeListRecord[], Error>> {
+    return Ok(listStoredAttendeesForEvent(eventId));
+  }
+
   async countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>> {
     return Ok(countStoredGoingRsvpsForEvent(eventId));
   }
@@ -199,6 +219,30 @@ class InMemoryHomeContentRepository implements IHomeContentRepository {
 
   async upsertRsvp(input: ICreateRsvpInput): Promise<Result<IRsvpRecord, Error>> {
     return Ok(upsertStoredRsvp(input));
+  }
+
+  async cancelGoingRsvpAndPromoteNextWaitlisted(
+    eventId: string,
+    userId: string,
+  ): Promise<Result<{ cancelledRsvpId: string; promotedRsvpId: string | null }, Error>> {
+    const current = Array.from(rsvps.values()).find(
+      (rsvp) => rsvp.eventId === eventId && rsvp.userId === userId,
+    );
+    if (!current || current.status !== "going") {
+      return Ok({ cancelledRsvpId: current?.id ?? "", promotedRsvpId: null });
+    }
+
+    rsvps.set(current.id, { ...current, status: "cancelled" });
+    const nextWaitlisted = Array.from(rsvps.values())
+      .filter((rsvp) => rsvp.eventId === eventId && rsvp.status === "waitlisted")
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))[0];
+
+    if (!nextWaitlisted) {
+      return Ok({ cancelledRsvpId: current.id, promotedRsvpId: null });
+    }
+
+    rsvps.set(nextWaitlisted.id, { ...nextWaitlisted, status: "going" });
+    return Ok({ cancelledRsvpId: current.id, promotedRsvpId: nextWaitlisted.id });
   }
 }
 

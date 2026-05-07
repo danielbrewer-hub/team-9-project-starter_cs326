@@ -85,6 +85,9 @@ const eventCreationController: IEventCreationController = {
   createEventFromForm: jest.fn(async (_req, res) => {
     res.status(201).send("event created");
   }),
+  finalizeEdits: jest.fn(async (_req, res) => {
+    res.status(200).send("event edited");
+  }),
 };
 
 const homeController: IHomeController = {
@@ -126,6 +129,7 @@ function createEventDetailServiceMock(): jest.Mocked<IEventDetailService> {
   return {
     getEventDetail: jest.fn(),
     toggleRsvp: jest.fn(),
+    getAttendeeList: jest.fn(),
   };
 }
 

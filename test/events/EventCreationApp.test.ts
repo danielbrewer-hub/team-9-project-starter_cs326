@@ -175,6 +175,7 @@ describe("event creation app layer", () => {
       createEvent: jest.fn().mockResolvedValue(
         Err(UnexpectedDependencyError("repository unavailable")),
       ),
+      finalizeEdits: jest.fn(),
     };
     const { app } = createEventAppHarness({ eventCreationService });
     const agent = await signInAs(app, "staff");
@@ -236,6 +237,7 @@ describe("event creation app layer", () => {
       createEvent: jest.fn().mockResolvedValue(
         Err(UnexpectedDependencyError("repository unavailable")),
       ),
+      finalizeEdits: jest.fn(),
     };
     const { app } = createEventAppHarness({ eventCreationService });
     const agent = await signInAs(app, "staff");

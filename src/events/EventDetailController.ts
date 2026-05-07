@@ -12,6 +12,7 @@ import type { IEventDetailService } from "./EventDetailService";
 export interface IEventDetailController {
   showEventDetail(req: Request, res: Response): Promise<void>;
   toggleRsvp(req: Request, res: Response): Promise<void>;
+  showAttendeeList(req: Request, res: Response): Promise<void>;
   showEditForm(req:Request,res:Response):Promise<void>;
 }
 
@@ -172,6 +173,50 @@ class EventDetailController implements IEventDetailController {
         layout: false,
       });
     }
+  }
+  async showAttendeeList(req: Request, res: Response): Promise<void> {
+    const browserSession = recordPageView(req.session);
+    const actor = this.toActor(browserSession);
+    const eventId = typeof req.params.id === "string" ? req.params.id : "";
+
+    if (!actor) {
+      res.status(401).render("partials/error", {
+        message: AuthenticationRequired("Please log in to continue.").message,
+        layout: false,
+      });
+      return;
+    }
+
+    const result = await this.service.getAttendeeList(eventId, {
+      userId: actor.id,
+      role: actor.role,
+    });
+    if (result.ok) {
+      res.render("events/partials/attendee-list-panel", {
+        attendeeList: result.value,
+        layout: false,
+      });
+      return;
+    }
+
+    if (result.value.name === "EventAuthorizationError") {
+      res.status(403).render("partials/error", {
+        message: result.value.message,
+        layout: false,
+      });
+      return;
+    }
+    if (result.value.name === "EventNotFoundError") {
+      res.status(404).render("partials/error", {
+        message: result.value.message,
+        layout: false,
+      });
+      return;
+    }
+    res.status(500).render("partials/error", {
+      message: "Unable to load attendee list right now.",
+      layout: false,
+    });
   }
   async showEditForm(req:Request,res:Response):Promise<void> {
     const browserSession = recordPageView(req.session);

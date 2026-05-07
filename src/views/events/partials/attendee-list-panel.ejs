@@ -1,0 +1,26 @@
+<div class="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+  <%
+    const groups = [
+      { key: "attending", label: "Attending", items: attendeeList.attending, tone: "border-emerald-200 bg-emerald-50 text-emerald-900" },
+      { key: "waitlisted", label: "Waitlisted", items: attendeeList.waitlisted, tone: "border-amber-200 bg-amber-50 text-amber-900" },
+      { key: "cancelled", label: "Cancelled", items: attendeeList.cancelled, tone: "border-rose-200 bg-rose-50 text-rose-900" },
+    ];
+  %>
+  <% groups.forEach((group) => { %>
+    <section class="rounded-lg border p-3 <%= group.tone %>">
+      <h3 class="text-sm font-bold uppercase tracking-wide"><%= group.label %> (<%= group.items.length %>)</h3>
+      <% if (group.items.length === 0) { %>
+        <p class="mt-2 text-sm opacity-80">No <%= group.label.toLowerCase() %> RSVPs yet.</p>
+      <% } else { %>
+        <ul class="mt-2 space-y-2">
+          <% group.items.forEach((entry) => { %>
+            <li class="rounded-md border border-black/10 bg-white/80 px-3 py-2 text-sm">
+              <div class="font-semibold"><%= entry.displayName %></div>
+              <div class="text-xs opacity-80">RSVPed at <%= new Date(entry.createdAt).toLocaleString() %></div>
+            </li>
+          <% }) %>
+        </ul>
+      <% } %>
+    </section>
+  <% }) %>
+</div>

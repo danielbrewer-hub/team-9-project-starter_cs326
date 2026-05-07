@@ -24,7 +24,10 @@ export type EventCreationError =
   | EventAuthorizationError
   | EventUnexpectedDependencyError;
 
-export type EventDetailError = EventNotFoundError | EventUnexpectedDependencyError;
+export type EventDetailError =
+  | EventNotFoundError
+  | EventAuthorizationError
+  | EventUnexpectedDependencyError;
 
 export type EventRsvpToggleError =
   | EventNotFoundError

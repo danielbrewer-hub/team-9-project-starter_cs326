@@ -2,6 +2,7 @@ import type { Event, PrismaClient, Rsvp } from "@prisma/client";
 import { DEMO_USERS } from "../auth/InMemoryUserRepository";
 import { Err, Ok, type Result } from "../lib/result";
 import type {
+  IAttendeeListRecord,
   ICreateEventInput,
   ICreateRsvpInput,
   IEventRecord,
@@ -150,6 +151,27 @@ export class PrismaHomeContentRepository implements IHomeContentRepository {
     }
   }
 
+  async listAttendeesForEvent(eventId: string): Promise<Result<IAttendeeListRecord[], Error>> {
+    try {
+      const attendees = await this.prisma.rsvp.findMany({
+        where: { eventId },
+        include: { user: true },
+        orderBy: { createdAt: "asc" },
+      });
+
+      return Ok(
+        attendees.map((rsvp) => ({
+          userId: rsvp.userId,
+          displayName: rsvp.user.displayName,
+          status: rsvp.status as IAttendeeListRecord["status"],
+          createdAt: rsvp.createdAt.toISOString(),
+        })),
+      );
+    } catch (error) {
+      return Err(toError(error));
+    }
+  }
+
   async countGoingRsvpsForEvent(eventId: string): Promise<Result<number, Error>> {
     try {
       const count = await this.prisma.rsvp.count({
@@ -192,6 +214,47 @@ export class PrismaHomeContentRepository implements IHomeContentRepository {
       });
 
       return Ok(toRsvpRecord(rsvp));
+    } catch (error) {
+      return Err(toError(error));
+    }
+  }
+
+  async cancelGoingRsvpAndPromoteNextWaitlisted(
+    eventId: string,
+    userId: string,
+  ): Promise<Result<{ cancelledRsvpId: string; promotedRsvpId: string | null }, Error>> {
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const current = await tx.rsvp.findUnique({
+          where: { eventId_userId: { eventId, userId } },
+        });
+        if (!current || current.status !== "going") {
+          return { cancelledRsvpId: current?.id ?? "", promotedRsvpId: null };
+        }
+
+        await tx.rsvp.update({
+          where: { id: current.id },
+          data: { status: "cancelled" },
+        });
+
+        const nextWaitlisted = await tx.rsvp.findFirst({
+          where: { eventId, status: "waitlisted" },
+          orderBy: { createdAt: "asc" },
+        });
+
+        if (!nextWaitlisted) {
+          return { cancelledRsvpId: current.id, promotedRsvpId: null };
+        }
+
+        await tx.rsvp.update({
+          where: { id: nextWaitlisted.id },
+          data: { status: "going" },
+        });
+
+        return { cancelledRsvpId: current.id, promotedRsvpId: nextWaitlisted.id };
+      });
+
+      return Ok(result);
     } catch (error) {
       return Err(toError(error));
     }

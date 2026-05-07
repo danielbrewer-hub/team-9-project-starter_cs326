@@ -79,9 +79,11 @@ function createRepositoryMock(): jest.Mocked<IHomeContentRepository> {
     createEvent: jest.fn(),
     updateEvent: jest.fn(),
     listRsvpsForEvent: jest.fn(),
+    listAttendeesForEvent: jest.fn(),
     countGoingRsvpsForEvent: jest.fn(),
     listRsvpsForUser: jest.fn(),
     upsertRsvp: jest.fn(),
+    cancelGoingRsvpAndPromoteNextWaitlisted: jest.fn(),
   };
 }
 
@@ -102,6 +104,11 @@ function createHarness() {
 
   repository.countGoingRsvpsForEvent.mockResolvedValue(Ok(3));
   repository.listRsvpsForUser.mockResolvedValue(Ok([]));
+  repository.listRsvpsForEvent.mockResolvedValue(Ok([]));
+  repository.listAttendeesForEvent.mockResolvedValue(Ok([]));
+  repository.cancelGoingRsvpAndPromoteNextWaitlisted.mockResolvedValue(
+    Ok({ cancelledRsvpId: "", promotedRsvpId: null }),
+  );
   userRepository.findById.mockResolvedValue(Ok(createUser()));
 
   return { repository, service, userRepository };
@@ -319,4 +326,99 @@ describe("EventDetailService", () => {
       }
     },
   );
+
+  it("computes waitlist position for a waitlisted member in event detail", async () => {
+    const { repository, service } = createHarness();
+    repository.findEventById.mockResolvedValue(Ok(createEvent({ capacity: 1 })));
+    repository.listRsvpsForUser.mockResolvedValue(
+      Ok([
+        {
+          id: "rsvp-self",
+          eventId: "event-published",
+          userId: "user-reader",
+          status: "waitlisted" as const,
+          createdAt: "2026-04-21T12:10:00.000Z",
+        },
+      ]),
+    );
+    repository.listRsvpsForEvent.mockResolvedValue(
+      Ok([
+        {
+          id: "rsvp-first",
+          eventId: "event-published",
+          userId: "user-first",
+          status: "waitlisted" as const,
+          createdAt: "2026-04-21T12:00:00.000Z",
+        },
+        {
+          id: "rsvp-self",
+          eventId: "event-published",
+          userId: "user-reader",
+          status: "waitlisted" as const,
+          createdAt: "2026-04-21T12:10:00.000Z",
+        },
+      ]),
+    );
+
+    const result = await service.getEventDetail("event-published", memberActor);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.rsvpStatus).toBe("waitlisted");
+      expect(result.value.waitlistPosition).toBe(2);
+    }
+  });
+
+  it("returns grouped attendee lists for the organizer sorted by RSVP time", async () => {
+    const { repository, service } = createHarness();
+    repository.findEventById.mockResolvedValue(Ok(createEvent()));
+    repository.listAttendeesForEvent.mockResolvedValue(
+      Ok([
+        {
+          userId: "u2",
+          displayName: "Wait Two",
+          status: "waitlisted" as const,
+          createdAt: "2026-04-21T12:02:00.000Z",
+        },
+        {
+          userId: "u1",
+          displayName: "Go One",
+          status: "going" as const,
+          createdAt: "2026-04-21T12:00:00.000Z",
+        },
+        {
+          userId: "u3",
+          displayName: "Cancelled Three",
+          status: "cancelled" as const,
+          createdAt: "2026-04-21T12:03:00.000Z",
+        },
+      ]),
+    );
+
+    const result = await service.getAttendeeList("event-published", ownerActor);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.attending.map((entry) => entry.displayName)).toEqual(["Go One"]);
+      expect(result.value.waitlisted.map((entry) => entry.displayName)).toEqual(["Wait Two"]);
+      expect(result.value.cancelled.map((entry) => entry.displayName)).toEqual([
+        "Cancelled Three",
+      ]);
+    }
+  });
+
+  it("rejects attendee list access for member users", async () => {
+    const { repository, service } = createHarness();
+    repository.findEventById.mockResolvedValue(Ok(createEvent()));
+
+    const result = await service.getAttendeeList("event-published", memberActor);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.value).toEqual({
+        name: "EventAuthorizationError",
+        message: "Only admins and the event organizer may view attendee lists.",
+      });
+    }
+  });
 });

@@ -94,6 +94,7 @@ describe("event detail app layer", () => {
         Err(UnexpectedDependencyError("detail dependency failed")),
       ),
       toggleRsvp: jest.fn(),
+      getAttendeeList: jest.fn(),
     };
     const { app } = createEventAppHarness({ eventDetailService });
     const agent = await signInAs(app, "user");
@@ -109,5 +110,32 @@ describe("event detail app layer", () => {
         role: "user",
       },
     );
+  });
+
+  it("renders grouped attendee list entries for organizers via HTMX endpoint", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "admin");
+
+    const response = await agent
+      .get(`/events/${DEMO_PUBLISHED_EVENT_ID}/attendees`)
+      .set("HX-Request", "true")
+      .expect(200);
+
+    expect(response.text).toContain("Attending");
+    expect(response.text).toContain("Waitlisted");
+    expect(response.text).toContain("Avery Admin");
+    expect(response.text).toContain("Sam Staff");
+  });
+
+  it("blocks members from loading attendee lists", async () => {
+    const { app } = createEventAppHarness();
+    const agent = await signInAs(app, "user");
+
+    const response = await agent
+      .get(`/events/${DEMO_PUBLISHED_EVENT_ID}/attendees`)
+      .set("HX-Request", "true")
+      .expect(403);
+
+    expect(response.text).toContain("Only admins and the event organizer may view attendee lists.");
   });
 });
