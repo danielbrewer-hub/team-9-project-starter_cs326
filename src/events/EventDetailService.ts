@@ -197,6 +197,7 @@ class EventDetailService implements IEventDetailService {
     let waitlistPosition = null;
     let isRsvpPending = false;
     let isFull = false;
+    let waitlistPosition: number | null = null;
     try {
       const rsvpsResult = await this.contentRepository.listRsvpsForUser(actor.userId);
       if (rsvpsResult.ok) {
@@ -214,6 +215,14 @@ class EventDetailService implements IEventDetailService {
       const goingCountResult = await this.contentRepository.countGoingRsvpsForEvent(event.id);
       if (goingCountResult.ok) {
         isFull = typeof event.capacity === "number" && goingCountResult.value >= event.capacity;
+      }
+      if (rsvpStatus === "waitlisted") {
+        const eventRsvpsResult = await this.contentRepository.listRsvpsForEvent(event.id);
+        if (eventRsvpsResult.ok) {
+          const waitlistedRsvps = eventRsvpsResult.value.filter((rsvp) => rsvp.status === "waitlisted");
+          const queueIndex = waitlistedRsvps.findIndex((rsvp) => rsvp.userId === actor.userId);
+          waitlistPosition = queueIndex >= 0 ? queueIndex + 1 : null;
+        }
       }
     } catch (e) {
       // ignore RSVP errors for now
