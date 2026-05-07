@@ -518,6 +518,91 @@ In HomeRepository.ts:
 
 # Feature 9 (Allen)
 
+Waitlist promotion and queue position:
+When a member cancels a "going" RSVP on a full event, the earliest waitlisted RSVP
+for that event is promoted to "going" in the same operation.
+Members on the waitlist can see their current waitlist position on event detail.
+
+Route:
+POST /events/:id/rsvp/toggle:
+    Uses EventDetailController.toggleRsvp.
+    Requires an authenticated member actor.
+    Returns:
+        200 for HTMX partial success,
+        302 redirect for non-HTMX fallback success,
+        403 for unauthorized actor,
+        404 for invalid or hidden event,
+        500 for dependency failures.
+
+EventDetailService contract additions:
+In EventDetailService.ts:
+  toggleRsvp(
+    eventId: string,
+    actor: IActingUser,
+  ): Promise<Result<IEventDetailView, EventRsvpToggleError>>;
+IEventDetailView additions:
+  waitlistPosition?: number | null;
+
+Service behavior:
+toggleRsvp:
+    If current RSVP is "going", service delegates to repository atomic cancel+promote.
+    If current RSVP is "waitlisted", service updates RSVP to "cancelled".
+    If RSVP is missing or "cancelled", service creates/reactivates RSVP as:
+        "going" when capacity is available,
+        "waitlisted" when event is full.
+getEventDetail:
+    Computes waitlistPosition for waitlisted actors from event RSVP rows sorted
+    by createdAt ascending.
+    Leaves waitlistPosition undefined/null for non-waitlisted actors.
+
+Repository contract additions:
+In HomeRepository.ts:
+  cancelGoingRsvpAndPromoteNextWaitlisted(
+    eventId: string,
+    userId: string,
+  ): Promise<
+    Result<
+      {
+        cancelledRsvpId: string;
+        promotedRsvpId: string | null;
+      },
+      Error
+    >
+  >;
+
+Repository behavior:
+cancelGoingRsvpAndPromoteNextWaitlisted:
+    Verifies the actor RSVP exists for (eventId, userId) and is currently "going".
+    Updates that RSVP to "cancelled".
+    Selects the earliest waitlisted RSVP for the same event by createdAt ascending.
+    Promotes that RSVP to "going" when present.
+    Returns both cancelled and promoted identifiers.
+
+InMemoryHomeRepository implementation:
+    Performs the same state transitions in memory while preserving ordering parity
+    with the contract.
+
+PrismaHomeRepository implementation:
+    Executes cancel + promotion in a single prisma.$transaction so partial updates
+    are not persisted on failure.
+
+UI behavior:
+Event detail RSVP action area:
+    Waitlisted users see "Waitlist position: #<N>" when waitlistPosition is known.
+    Waitlist position is visually distinct from generic RSVP helper text.
+    After toggle, HTMX replaces the RSVP action partial and re-renders status.
+
+Tests:
+EventRsvpToggleService tests cover:
+    going cancellation promotes earliest waitlisted RSVP,
+    no promotion when waitlist is empty,
+    waitlisted cancellation does not promote.
+EventDetailService tests cover:
+    waitlistPosition computation and ordering semantics.
+HomeRepositoryContract tests cover:
+    cancelGoingRsvpAndPromoteNextWaitlisted behavior across in-memory and Prisma
+    implementations.
+
 # Feature 10 (Aditya)
 
 # Feature 12 (Allen)
