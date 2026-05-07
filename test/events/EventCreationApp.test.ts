@@ -1,7 +1,7 @@
 import request from "supertest";
 import type { IEventCreationService } from "../../src/events/EventCreationService";
 import { UnexpectedDependencyError } from "../../src/events/errors";
-import { Err } from "../../src/lib/result";
+import { Err, Ok } from "../../src/lib/result";
 import {
   createEventAppHarness,
   signInAs,
@@ -175,6 +175,7 @@ describe("event creation app layer", () => {
       createEvent: jest.fn().mockResolvedValue(
         Err(UnexpectedDependencyError("repository unavailable")),
       ),
+      finalizeEdits: jest.fn().mockResolvedValue(Ok(null)),
     };
     const { app } = createEventAppHarness({ eventCreationService });
     const agent = await signInAs(app, "staff");
@@ -236,6 +237,7 @@ describe("event creation app layer", () => {
       createEvent: jest.fn().mockResolvedValue(
         Err(UnexpectedDependencyError("repository unavailable")),
       ),
+      finalizeEdits: jest.fn().mockResolvedValue(Ok(null)),
     };
     const { app } = createEventAppHarness({ eventCreationService });
     const agent = await signInAs(app, "staff");

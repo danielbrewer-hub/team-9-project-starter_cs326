@@ -295,6 +295,9 @@ RSVP button state:
     canRsvp is true only for member users viewing a published event.
     The button label reflects rsvpStatus and isFull: "RSVP Going", "Join
     Waitlist", "Cancel RSVP", or "Leave Waitlist".
+    The RSVP controls use Alpine.js state initialized from the server-rendered
+    event detail data. Tailwind CSS classes make each state visually distinct:
+    available, full, going, waitlisted, and disabled/pending.
 Toggle access:
     The toggle route requires an authenticated actor. Member users may toggle RSVPs.
     Staff organizers and admins are rejected because organizers do not attend
@@ -312,6 +315,8 @@ Immediate update:
     /events/:id/rsvp/toggle, targets #rsvp-action-area, and swaps the returned
     partial into that element so the button state updates without a full page
     reload.
+    Alpine.js reinitializes from the returned fragment after the HTMX swap and
+    applies a smooth visual transition to the RSVP button and helper text.
     The server returns an HTML fragment for HTMX requests, not JSON and not a
     full page. The fragment includes the updated RSVP action area and may include
     out-of-band HTML for related page fragments such as the attendee count.
@@ -348,6 +353,59 @@ In HomeRepository.ts:
 # Feature 5 (Dan)
 
 # Feature 6 (Aditya)
+Routes:
+GET /events -> eventController.list(req, res)
+
+Interfaces:
+EventCategory: Union type for a valid event category:
+    export type EventCategory = 'social' | 'educational' | 'volunteer' | 'sports' | 'arts';
+VALID_CATEGORIES: Array of all valid EventCategory values:
+    export const VALID_CATEGORIES: EventCategory[];
+Timeframe: Union type for a valid timeframe filter:
+    export type Timeframe = 'all' | 'this-week' | 'this-weekend';
+VALID_TIMEFRAMES: Readonly tuple of all valid Timeframe values:
+    export const VALID_TIMEFRAMES: readonly ['all', 'this-week', 'this-weekend'];
+IEventController: The controller for the event list and search routes:
+    export interface IEventController {
+    list(req: Request, res: Response): Promise<void>;
+    search(req: Request, res: Response): Promise<void>;
+    }
+
+Behavior:
+Filter access:
+    The /events route requires an authenticated actor.
+    Unauthenticated requests are redirected to /login.
+Filter logic:
+    Category filter accepts only values in VALID_CATEGORIES; unknown values are ignored.
+    Timeframe filter accepts only values in VALID_TIMEFRAMES; unknown values default to 'all'.
+    'all' returns all published events whose startDatetime is >= now, sorted ascending.
+    'this-week' returns published events whose startDatetime falls within the next 7 days.
+    'this-weekend' returns published events whose startDatetime falls on the upcoming
+    Saturday-Sunday window (midnight Saturday to midnight Monday).
+    Category and timeframe filters are applied together when both are present.
+HTMX partial update:
+    When the HX-Request header is present the controller renders only the
+    events/_event_list partial with layout disabled so HTMX can swap the
+    list in place without a full page reload.
+    Non-HTMX requests render the full events/list page.
+HTTP response mapping:
+    Successful filter requests return status 200 with the event list or partial.
+    Unexpected repository failures return status 500 and render an error partial.
+
+Factory Helpers:
+For EventController:
+    export function CreateEventController(service: EventService): IEventController {
+    return new EventController(service);
+    }
+For EventService:
+    export function CreateEventService(repo: IHomeContentRepository): EventService {
+    return new EventService(repo);
+    }
+
+Other Helpers:
+In HomeRepository.ts:
+  listEvents(): Promise<Result<IEventRecord[], Error>>;
+    Returns all stored event records so the service can filter in memory.
 
 # Feature 7 (Isik)
 Routes:
@@ -437,6 +495,13 @@ Dashboard grouping:
     when the event is not "past" or "cancelled".
     RSVP records with status "cancelled" or events with status "past" or
     "cancelled" are placed in pastRsvps.
+Dashboard presentation:
+    The dashboard renders upcoming and past/cancelled groups as visually distinct
+    sections using Tailwind CSS. Upcoming RSVP cards use active styling, while
+    past and cancelled RSVP cards use a muted archive treatment.
+    Dashboard items show clear status indicators for rsvpStatus and eventStatus.
+    RSVP status badges visually distinguish going, waitlisted, cancelled, and
+    archived states.
 Dashboard sorting:
     Upcoming RSVPs should be sorted by event startDatetime ascending so the next
     event appears first.
@@ -455,6 +520,9 @@ Cancel RSVP:
     cancelRsvp verifies the RSVP belongs to the actor, rejects already-cancelled
     RSVPs, rejects RSVPs for past or cancelled events, and persists the change by
     upserting the RSVP with status "cancelled".
+    Dashboard cancel controls use Alpine.js to show an inline confirmation prompt
+    before submission. The first cancel click opens the prompt, Confirm submits
+    the existing form, and Keep RSVP closes the prompt without submitting.
 Immediate update:
     The RSVP dashboard renders its upcoming and past/cancelled sections inside
     #rsvp-dashboard-sections. That section listens for the
@@ -467,9 +535,11 @@ Immediate update:
     empty 204 response with HX-Trigger: rsvp-dashboard-refresh. HTMX then asks
     the Feature 7 partial route for the updated #rsvp-dashboard-sections HTML
     fragment with layout disabled.
-    HTMX swaps that refreshed section into the page so upcoming rows,
-    past/cancelled rows, counts, and empty states update without a full page
-    reload.
+    HTMX swaps that refreshed section into the page with view-transition support
+    so matching RSVP cards can animate between sections when the browser supports
+    it. RSVP cards expose stable view-transition names derived from their RSVP
+    ids. Upcoming rows, past/cancelled rows, counts, and empty states update
+    without a full page reload.
     Non-HTMX cancel requests are the fallback path and redirect back to /rsvp.
 
 Factory Helpers:
@@ -502,8 +572,158 @@ In HomeRepository.ts:
 # Feature 9 (Allen)
 
 # Feature 10 (Aditya)
+Routes:
+GET /events/search -> eventController.search(req, res)
+    Must be registered before /events/:id so Express does not treat the
+    literal string "search" as an event ID parameter.
+
+Interfaces:
+InvalidSearchError: Returned when the search query exceeds the allowed length:
+    export interface InvalidSearchError {
+    name: 'InvalidSearchError';
+    message: string;
+    }
+IEventController: (shared with Feature 6)
+    export interface IEventController {
+    list(req: Request, res: Response): Promise<void>;
+    search(req: Request, res: Response): Promise<void>;
+    }
+
+Behavior:
+Search access:
+    The /events/search route requires an authenticated actor.
+    Unauthenticated requests are redirected to /login.
+Query validation:
+    The q query parameter is trimmed before use.
+    Queries exceeding 200 characters return InvalidSearchError rendered on the
+    events/list page with status 200 and an empty event list.
+Search logic:
+    Only published events whose endDatetime is > now are eligible.
+    An empty query returns all eligible events sorted by startDatetime ascending.
+    A non-empty query performs a case-insensitive substring match against
+    title, description, and location. An event is included if any field matches.
+    Results are sorted by startDatetime ascending.
+HTMX partial update:
+    When the HX-Request header is present the controller renders only the
+    events/_event_list partial with layout disabled so HTMX can swap the
+    list in place without a full page reload.
+    Non-HTMX requests render the full events/list page with search results.
+HTTP response mapping:
+    InvalidSearchError responses render the list page with an inline error message.
+    Successful search requests return status 200 with the result list or partial.
+
+Factory Helpers:
+For EventController:
+    export function CreateEventController(service: EventService): IEventController {
+    return new EventController(service);
+    }
+For EventService:
+    export function CreateEventService(repo: IHomeContentRepository): EventService {
+    return new EventService(repo);
+    }
+
+Other Helpers:
+In HomeRepository.ts:
+  listEvents(): Promise<Result<IEventRecord[], Error>>;
+    Returns all stored event records so the service can search in memory.
 
 # Feature 12 (Allen)
+
+Attendee list access and rendering:
+From the event detail page, attendee identities are visible only to:
+    The event organizer (event.organizerId matches actor.userId), or
+    Any admin user.
+Members and non-organizer staff users are denied attendee-list access.
+
+Route:
+GET /events/:id/attendees:
+    Requires an authenticated session.
+    Uses EventDetailController.showAttendees.
+    For HTMX requests (HX-Request: true), returns the attendee-list partial only.
+    For non-HTMX requests, returns a full attendee-list page fallback.
+    Returns:
+        200 on success,
+        403 for unauthorized actor,
+        404 when event id is invalid or missing,
+        500 for dependency failures.
+
+EventDetailService contract additions:
+In EventDetailService.ts:
+  getAttendeeList(
+    eventId: string,
+    actor: IActingUser,
+  ): Promise<Result<IEventAttendeeListView, EventAttendeeListError>>;
+
+EventTypes:
+AttendeeListStatus:
+    "going" | "waitlisted" | "cancelled"
+IEventAttendeeEntry:
+    userId: string
+    displayName: string
+    status: AttendeeListStatus
+    rsvpCreatedAt: string
+IEventAttendeeListView:
+    eventId: string
+    attendees: Record<AttendeeListStatus, IEventAttendeeEntry[]>
+
+Service behavior:
+getAttendeeList:
+    Trims and validates eventId; blank event ids return EventNotFoundError.
+    Loads event and returns EventNotFoundError when missing.
+    Enforces authorization (organizer or admin only), otherwise EventAuthorizationError.
+    Loads attendee rows from HomeRepository attendee projection.
+    Groups rows into:
+        attendees.going
+        attendees.waitlisted
+        attendees.cancelled
+    Sorts each group by RSVP createdAt ascending.
+    Returns IEventAttendeeListView.
+
+Repository contract additions:
+In HomeRepository.ts:
+  interface IEventAttendeeRecord extends IRsvpRecord {
+    displayName: string;
+  }
+  listRsvpAttendeesForEvent(
+    eventId: string,
+  ): Promise<Result<IEventAttendeeRecord[], Error>>;
+
+Repository behavior:
+listRsvpAttendeesForEvent:
+    Returns RSVP rows for the event joined with attendee display names.
+    Rows are sorted by createdAt ascending.
+    Preserves RSVP fields (id, eventId, userId, status, createdAt) and adds
+    displayName.
+
+InMemoryHomeRepository implementation:
+    Resolves displayName by matching RSVP userId to in-memory demo users and
+    returns attendee rows sorted by createdAt ascending.
+
+PrismaHomeRepository implementation:
+    Resolves displayName via Prisma relation join:
+        rsvp include user select displayName
+    Maps joined rows to IEventAttendeeRecord and returns createdAt as ISO
+    strings.
+
+UI behavior:
+Event detail page includes an attendee-list load action for authorized users.
+HTMX button:
+    GET /events/:id/attendees
+    target: #attendee-list-container
+    swap: innerHTML
+Partial shows three grouped sections:
+    Attending, Waitlisted, Cancelled
+Each entry shows attendee displayName and RSVP createdAt timestamp.
+
+Tests:
+EventDetailService tests cover:
+    organizer/admin authorized access,
+    member/non-organizer staff denial,
+    grouping and per-group ordering.
+EventDetailApp tests cover:
+    GET /events/:id/attendees authorized HTMX access and unauthorized denial.
+HomeRepositoryContract tests cover:
+    listRsvpAttendeesForEvent behavior for both in-memory and Prisma implementations.
 
 # Repository
 
@@ -612,3 +832,76 @@ Errors:
 Tests:
     The Prisma repository should pass the HomeRepositoryContract test suite by
     adding the Prisma factory as another implementation of IHomeContentRepository.
+
+# Home
+Routes:
+GET /home -> homeController.showHome()
+
+Interfaces:
+IHomePageData: Home page data rendered after authentication:
+    export interface IHomePageData {
+    welcomeTitle: string;
+    welcomeMessage: string;
+    signedInSummary: string;
+    eventSummary: string[];
+    recentEvents: Array<{
+        id: string;
+        title: string;
+        status: string;
+        location: string;
+        category: string;
+        attendeeCount: number;
+        createdAt: string;
+    }>;
+    }
+IHomeController: The controller for the authenticated home page:
+    export interface IHomeController {
+    showHome(req: Request, res: Response): Promise<void>;
+    }
+IHomeService: The service that loads home page data:
+    export interface IHomeService {
+    getHomePageData(
+        actor: IAuthenticatedUser,
+    ): Promise<Result<IHomePageData, HomeServiceError>>;
+    }
+
+Error Type:
+HomeServiceError: Union type for home page failures:
+    export type HomeServiceError = {
+    name: "UnexpectedDependencyError" | "NotFoundError" | "ValidationError";
+    message: string;
+    };
+
+Behavior:
+Home access:
+    The home page requires an authenticated actor. Unauthenticated requests
+    receive an AuthenticationRequired error response.
+Home page data:
+    getHomePageData loads all stored events, filters them through canViewEvent for
+    the actor, and counts only "going" RSVPs for each visible event.
+    eventSummary includes the visible event count, published event count, and
+    number of represented organizers.
+Recent events:
+    recentEvents contains all visible events sorted by createdAt descending so
+    the most recently created event appears first.
+    The home page renders the first five recent events by default. When more than
+    five recent events exist, the remaining events render behind an Alpine.js
+    Show more / Show fewer control below the first five.
+HTTP response mapping:
+    HomeServiceError responses from dependencies use status 500 and render the
+    home page with a page-level error. Successful requests render the home page.
+
+Factory Helpers:
+For HomeController:
+    export function CreateHomeController(
+    service: IHomeService,
+    logger: ILoggingService,
+    ): IHomeController {
+    return new HomeController(service, logger);
+    }
+For HomeService:
+    export function CreateHomeService(
+    contentRepository: IHomeContentRepository,
+    ): IHomeService {
+    return new HomeService(contentRepository);
+    }

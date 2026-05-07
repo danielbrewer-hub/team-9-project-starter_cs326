@@ -1,0 +1,13 @@
+<section class="space-y-6">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-slate-900">Event Attendees</h1>
+    <a
+      href="/events/<%= attendeeList.eventId %>"
+      class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 no-underline hover:bg-slate-50"
+    >
+      Back to Event
+    </a>
+  </div>
+
+  <%- include("partials/attendee-list", { attendeeList }) %>
+</section>

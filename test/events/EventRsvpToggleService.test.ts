@@ -1,4 +1,5 @@
 import type { IUserRecord, UserRole } from "../../src/auth/User";
+import { UnexpectedDependencyError as AuthDependencyError } from "../../src/auth/errors";
 import type { IUserRepository } from "../../src/auth/UserRepository";
 import { CreateEventDetailService } from "../../src/events/EventDetailService";
 import type { IActingUser } from "../../src/events/EventTypes";
@@ -60,6 +61,7 @@ function createRepositoryMock(): jest.Mocked<IHomeContentRepository> {
     findEventById: jest.fn(),
     createEvent: jest.fn(),
     updateEvent: jest.fn(),
+    listRsvpAttendeesForEvent: jest.fn(),
     listRsvpsForEvent: jest.fn(),
     countGoingRsvpsForEvent: jest.fn(),
     listRsvpsForUser: jest.fn(),
@@ -97,9 +99,26 @@ function seedRepositoryState(
   repository.listRsvpsForUser.mockImplementation(async (userId) => {
     return Ok(rsvps.filter((rsvp) => rsvp.userId === userId));
   });
+  repository.listRsvpsForEvent.mockImplementation(async (eventId) => {
+    return Ok(
+      rsvps
+        .filter((rsvp) => rsvp.eventId === eventId)
+        .sort((left, right) => left.createdAt.localeCompare(right.createdAt)),
+    );
+  });
   repository.countGoingRsvpsForEvent.mockImplementation(async (eventId) => {
     return Ok(
       rsvps.filter((rsvp) => rsvp.eventId === eventId && rsvp.status === "going").length,
+    );
+  });
+  repository.listRsvpAttendeesForEvent.mockImplementation(async (eventId) => {
+    return Ok(
+      rsvps
+        .filter((rsvp) => rsvp.eventId === eventId)
+        .map((rsvp) => ({
+          ...rsvp,
+          displayName: rsvp.userId,
+        })),
     );
   });
   repository.upsertRsvp.mockImplementation(async (input: ICreateRsvpInput) => {
@@ -237,7 +256,7 @@ describe("EventDetailService RSVP toggle", () => {
       const { repository, userRepository, service } = createHarness();
       const event = createEvent();
       seedRepositoryState(repository, event);
-      userRepository.findById.mockResolvedValue(Err({ name: "UnexpectedDependencyError", message: "Unable to load organizer." }));
+      userRepository.findById.mockResolvedValue(Err(AuthDependencyError("Unable to load organizer.")));
 
       const result = await service.toggleRsvp(event.id, member);
 
@@ -443,6 +462,49 @@ describe("EventDetailService RSVP toggle", () => {
         });
       },
     );
+
+    it("promotes the next waitlisted member when a going RSVP is cancelled", async () => {
+      const { repository, service } = createHarness();
+      const event = createEvent({ capacity: 1 });
+      const rsvps = [
+        createRsvp({
+          id: "rsvp-going-member",
+          userId: member.userId,
+          status: "going",
+        }),
+        createRsvp({
+          id: "rsvp-waitlist-1",
+          userId: "user-waitlist-1",
+          status: "waitlisted",
+          createdAt: "2026-04-02T10:00:00.000Z",
+        }),
+        createRsvp({
+          id: "rsvp-waitlist-2",
+          userId: "user-waitlist-2",
+          status: "waitlisted",
+          createdAt: "2026-04-02T10:05:00.000Z",
+        }),
+      ];
+      seedRepositoryState(repository, event, rsvps);
+
+      const result = await service.toggleRsvp(event.id, member);
+
+      expect(result.ok).toBe(true);
+      expect(repository.upsertRsvp).toHaveBeenNthCalledWith(1, {
+        id: "rsvp-going-member",
+        eventId: event.id,
+        userId: member.userId,
+        status: "cancelled",
+      });
+      expect(repository.upsertRsvp).toHaveBeenNthCalledWith(2, {
+        id: "rsvp-waitlist-1",
+        eventId: event.id,
+        userId: "user-waitlist-1",
+        status: "going",
+      });
+      expect(rsvps.find((rsvp) => rsvp.id === "rsvp-waitlist-1")?.status).toBe("going");
+      expect(rsvps.find((rsvp) => rsvp.id === "rsvp-waitlist-2")?.status).toBe("waitlisted");
+    });
 
     it("reactivates a cancelled RSVP as going when capacity is available", async () => {
       const { repository, service } = createHarness();

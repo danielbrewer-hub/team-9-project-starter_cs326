@@ -85,6 +85,9 @@ const eventCreationController: IEventCreationController = {
   createEventFromForm: jest.fn(async (_req, res) => {
     res.status(201).send("event created");
   }),
+  finalizeEdits: jest.fn(async (_req, res) => {
+    res.status(200).send("edits finalized");
+  }),
 };
 
 const homeController: IHomeController = {
@@ -126,10 +129,15 @@ function createEventDetailServiceMock(): jest.Mocked<IEventDetailService> {
   return {
     getEventDetail: jest.fn(),
     toggleRsvp: jest.fn(),
+    getAttendeeList: jest.fn(),
   };
 }
 
-function createEvent(overrides: Partial<IEventDetailView> = {}): IEventDetailView {
+type IEventDetailViewWithWaitlist = IEventDetailView & {
+  waitlistPosition?: number | null;
+};
+
+function createEvent(overrides: Partial<IEventDetailViewWithWaitlist> = {}): IEventDetailViewWithWaitlist {
   return {
     id: "event-rsvp-toggle",
     title: "Architecture Review",
@@ -233,6 +241,23 @@ describe("event RSVP toggle app layer", () => {
         userId: usersByRole.user.id,
         role: "user",
       });
+    });
+
+    it("renders a waitlist position marker when the member is queued", async () => {
+      const { app, service } = createHarness();
+      const event: IEventDetailViewWithWaitlist = createEvent({
+        rsvpStatus: "waitlisted",
+        isFull: true,
+        waitlistPosition: 2,
+      });
+      service.getEventDetail.mockResolvedValue(Ok(event));
+      const agent = await signIn(app, "user");
+
+      const response = await agent.get(`/events/${event.id}`).expect(200);
+
+      expect(response.text).toContain('data-waitlist-position="2"');
+      expect(response.text).toContain("Queue position");
+      expect(response.text).toContain('x-text="waitlistPosition">2</span>');
     });
 
     it("does not render the toggle form when the event detail view says RSVP is unavailable", async () => {

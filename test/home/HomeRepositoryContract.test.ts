@@ -212,6 +212,7 @@ function describeHomeRepositoryContract(
       );
 
       const eventRsvps = unwrapOk(await repository.listRsvpsForEvent(eventId));
+      const attendeeRows = unwrapOk(await repository.listRsvpAttendeesForEvent(eventId));
       const userRsvps = unwrapOk(await repository.listRsvpsForUser(userId));
       const goingCount = unwrapOk(await repository.countGoingRsvpsForEvent(eventId));
 
@@ -231,6 +232,29 @@ function describeHomeRepositoryContract(
       );
       expect(userRsvps).toHaveLength(2);
       expect(goingCount).toBe(1);
+      expect(attendeeRows).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            eventId,
+            userId,
+            status: "going",
+            displayName: expect.any(String),
+          }),
+          expect.objectContaining({
+            eventId,
+            userId: otherUserId,
+            status: "waitlisted",
+            displayName: expect.any(String),
+          }),
+          expect.objectContaining({
+            eventId,
+            userId: "user-admin",
+            status: "cancelled",
+            displayName: expect.any(String),
+          }),
+        ]),
+      );
+      expect(attendeeRows).toHaveLength(3);
     });
 
     it("upserts RSVPs by event and user while preserving the original record identity", async () => {

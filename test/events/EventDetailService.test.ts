@@ -4,9 +4,11 @@ import type { IUserRepository } from "../../src/auth/UserRepository";
 import { CreateEventDetailService } from "../../src/events/EventDetailService";
 import type { IActingUser } from "../../src/events/EventTypes";
 import type {
+  IEventAttendeeRecord,
   EventStatus,
   IEventRecord,
   IHomeContentRepository,
+  IRsvpRecord,
 } from "../../src/home/HomeRepository";
 import { Err, Ok } from "../../src/lib/result";
 
@@ -30,6 +32,20 @@ const otherStaffActor: IActingUser = {
   role: "staff",
 };
 
+function eventWindowFromNow(daysFromNow: number): Pick<IEventRecord, "startDatetime" | "endDatetime"> {
+  const start = new Date();
+  start.setDate(start.getDate() + daysFromNow);
+  start.setHours(14, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setHours(start.getHours() + 1);
+
+  return {
+    startDatetime: start.toISOString(),
+    endDatetime: end.toISOString(),
+  };
+}
+
 function createEvent(overrides: Partial<IEventRecord> = {}): IEventRecord {
   return {
     id: "event-published",
@@ -39,8 +55,7 @@ function createEvent(overrides: Partial<IEventRecord> = {}): IEventRecord {
     category: "planning",
     status: "published",
     capacity: 20,
-    startDatetime: "2026-05-01T14:00:00.000Z",
-    endDatetime: "2026-05-01T15:00:00.000Z",
+    ...eventWindowFromNow(1),
     organizerId: "user-staff",
     createdAt: "2026-04-21T12:00:00.000Z",
     updatedAt: "2026-04-21T12:00:00.000Z",
@@ -65,6 +80,7 @@ function createRepositoryMock(): jest.Mocked<IHomeContentRepository> {
     findEventById: jest.fn(),
     createEvent: jest.fn(),
     updateEvent: jest.fn(),
+    listRsvpAttendeesForEvent: jest.fn(),
     listRsvpsForEvent: jest.fn(),
     countGoingRsvpsForEvent: jest.fn(),
     listRsvpsForUser: jest.fn(),
@@ -306,4 +322,90 @@ describe("EventDetailService", () => {
       }
     },
   );
+
+  describe("getAttendeeList", () => {
+    it.each([
+      ["organizer", ownerActor],
+      ["admin", adminActor],
+    ] as const)("allows the %s to load attendees", async (_label, actor) => {
+      const { repository, service, userRepository } = createHarness();
+      repository.findEventById.mockResolvedValue(Ok(createEvent()));
+      const attendeeRecords: IEventAttendeeRecord[] = [
+        {
+          id: "rsvp-b",
+          eventId: "event-published",
+          userId: "user-reader",
+          displayName: "Una User",
+          status: "going",
+          createdAt: "2026-04-21T12:10:00.000Z",
+        },
+        {
+          id: "rsvp-a",
+          eventId: "event-published",
+          userId: "user-admin",
+          displayName: "Avery Admin",
+          status: "going",
+          createdAt: "2026-04-21T12:05:00.000Z",
+        },
+        {
+          id: "rsvp-c",
+          eventId: "event-published",
+          userId: "user-staff",
+          displayName: "Sam Staff",
+          status: "waitlisted",
+          createdAt: "2026-04-21T12:15:00.000Z",
+        },
+        {
+          id: "rsvp-d",
+          eventId: "event-published",
+          userId: "user-other-staff",
+          displayName: "Taylor Staff",
+          status: "cancelled",
+          createdAt: "2026-04-21T12:20:00.000Z",
+        },
+      ];
+      repository.listRsvpAttendeesForEvent.mockResolvedValue(
+        Ok(attendeeRecords),
+      );
+
+      const result = await service.getAttendeeList("event-published", actor);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.eventId).toBe("event-published");
+        expect(result.value.attendees.going.map((entry) => entry.displayName)).toEqual([
+          "Avery Admin",
+          "Una User",
+        ]);
+        expect(result.value.attendees.waitlisted.map((entry) => entry.displayName)).toEqual([
+          "Sam Staff",
+        ]);
+        expect(result.value.attendees.cancelled.map((entry) => entry.displayName)).toEqual([
+          "Taylor Staff",
+        ]);
+      }
+      expect(repository.findEventById).toHaveBeenCalledWith("event-published");
+      expect(repository.listRsvpAttendeesForEvent).toHaveBeenCalledWith("event-published");
+    });
+
+    it.each([
+      ["member", memberActor],
+      ["non-organizer staff", otherStaffActor],
+    ] as const)("denies attendee list access for %s", async (_label, actor) => {
+      const { repository, service, userRepository } = createHarness();
+      repository.findEventById.mockResolvedValue(Ok(createEvent()));
+
+      const result = await service.getAttendeeList("event-published", actor);
+
+      expect(result.ok).toBe(false);
+      if (!result.ok) {
+        expect(result.value).toEqual({
+          name: "EventAuthorizationError",
+          message: "Only the event organizer or an admin may view attendees.",
+        });
+      }
+      expect(repository.listRsvpAttendeesForEvent).not.toHaveBeenCalled();
+      expect(userRepository.findById).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -26,3 +26,17 @@ export interface IEventDetailView extends IEventRecord {
   isRsvpPending?: boolean;
   isFull?: boolean;
 }
+
+export type AttendeeListStatus = "going" | "waitlisted" | "cancelled";
+
+export interface IEventAttendeeEntry {
+  userId: string;
+  displayName: string;
+  status: AttendeeListStatus;
+  rsvpCreatedAt: string;
+}
+
+export interface IEventAttendeeListView {
+  eventId: string;
+  attendees: Record<AttendeeListStatus, IEventAttendeeEntry[]>;
+}

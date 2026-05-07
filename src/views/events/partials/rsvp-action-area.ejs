@@ -1,9 +1,14 @@
 <div id="rsvp-action-area" class="mt-4 space-y-3 text-sm text-slate-600">
   <% if (event.canEdit || event.canCancel) { %>
     <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-      Organizer controls for editing and cancelling are reserved for
-      later Sprint features.
-    </div>
+  <button
+  type="button"
+  class="w-full rounded-lg px-4 py-2 shadow focus:outline-none"
+  hx-get="/events/<%= event.id %>/edit"
+  hx-target="#event-content"
+  hx-swap="innerHTML"
+>Edit Event</button>
+</div>
   <% } %>
 
   <% if (event.canRsvp) { %>
@@ -14,38 +19,116 @@
       hx-post="/events/<%= event.id %>/rsvp/toggle"
       hx-target="#rsvp-action-area"
       hx-swap="outerHTML"
-      class="space-y-2"
+      class="space-y-3"
+      x-data="{
+        status: '<%= event.rsvpStatus || '' %>',
+        isFull: <%= event.isFull ? 'true' : 'false' %>,
+        isPending: <%= event.isRsvpPending ? 'true' : 'false' %>,
+        waitlistPosition: <%= typeof event.waitlistPosition === 'number' ? event.waitlistPosition : 'null' %>,
+        get state() {
+          if (this.status === 'going') return 'going';
+          if (this.status === 'waitlisted') return 'waitlisted';
+          return this.isFull ? 'full' : 'available';
+        },
+        states: {
+          going: {
+            label: 'Cancel RSVP',
+            helper: 'You are attending this event.',
+            badge: 'Going',
+            classes: 'border-emerald-700 bg-emerald-600 text-white shadow-emerald-200 hover:bg-emerald-700 focus:ring-emerald-300'
+          },
+          waitlisted: {
+            label: 'Leave Waitlist',
+            helper: 'You are on the waitlist.',
+            badge: 'Waitlisted',
+            classes: 'border-amber-600 bg-amber-500 text-slate-950 shadow-amber-200 hover:bg-amber-600 focus:ring-amber-300'
+          },
+          full: {
+            label: 'Join Waitlist',
+            helper: 'Event is full. You can join the waitlist.',
+            badge: 'Full',
+            classes: 'border-indigo-700 bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700 focus:ring-indigo-300'
+          },
+          available: {
+            label: 'RSVP Going',
+            helper: 'You are not RSVPed.',
+            badge: 'Available',
+            classes: 'border-blue-700 bg-blue-600 text-white shadow-blue-200 hover:bg-blue-700 focus:ring-blue-300'
+          }
+        },
+        get current() {
+          return this.states[this.state];
+        }
+      }"
+      x-init="$nextTick(() => $refs.button.classList.remove('scale-95', 'opacity-0'))"
     >
       <button
+        x-ref="button"
         type="submit"
-        class="w-full rounded-lg px-4 py-2 font-semibold text-white shadow transition focus:outline-none
-          <%= event.rsvpStatus === 'going' ? 'bg-red-600 hover:bg-red-700' : event.rsvpStatus === 'waitlisted' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-blue-600 hover:bg-blue-700' %>"
+        class="flex w-full scale-95 items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left font-semibold opacity-0 shadow-lg transition-all duration-300 ease-out hover:-translate-y-0.5 focus:outline-none focus:ring-4 disabled:translate-y-0 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
+        x-bind:class="current.classes"
+        x-bind:disabled="isPending"
         <%= event.isRsvpPending ? 'disabled' : '' %>
       >
-        <% if (event.rsvpStatus === 'going') { %>
-          Cancel RSVP
-        <% } else if (event.rsvpStatus === 'waitlisted') { %>
-          Leave Waitlist
-        <% } else { %>
-          <% if (event.isFull) { %>
-            Join Waitlist
+        <span class="transition-opacity duration-300" x-text="current.label">
+          <% if (event.rsvpStatus === 'going') { %>
+            Cancel RSVP
+          <% } else if (event.rsvpStatus === 'waitlisted') { %>
+            Leave Waitlist
           <% } else { %>
-            RSVP Going
+            <% if (event.isFull) { %>
+              Join Waitlist
+            <% } else { %>
+              RSVP Going
+            <% } %>
           <% } %>
-        <% } %>
+        </span>
+        <span
+          class="rounded-full bg-white/25 px-2.5 py-1 text-xs font-bold uppercase tracking-wide"
+          x-text="current.badge"
+        >
+          <% if (event.rsvpStatus === 'going') { %>
+            Going
+          <% } else if (event.rsvpStatus === 'waitlisted') { %>
+            Waitlisted
+          <% } else { %>
+            <%= event.isFull ? 'Full' : 'Available' %>
+          <% } %>
+        </span>
       </button>
-      <div class="text-xs text-slate-600">
-        <% if (event.rsvpStatus === 'going') { %>
-          You are attending this event.
-        <% } else if (event.rsvpStatus === 'waitlisted') { %>
-          You are on the waitlist.
-        <% } else { %>
-          <% if (event.isFull) { %>
-            Event is full. You can join the waitlist.
+      <div
+        class="rounded-lg border px-3 py-2 text-xs transition-colors duration-300"
+        x-bind:class="{
+          'border-emerald-200 bg-emerald-50 text-emerald-800': state === 'going',
+          'border-amber-200 bg-amber-50 text-amber-800': state === 'waitlisted',
+          'border-indigo-200 bg-indigo-50 text-indigo-800': state === 'full',
+          'border-blue-200 bg-blue-50 text-blue-800': state === 'available'
+        }"
+      >
+        <span x-text="current.helper">
+          <% if (event.rsvpStatus === 'going') { %>
+            You are attending this event.
+          <% } else if (event.rsvpStatus === 'waitlisted') { %>
+            You are on the waitlist.
           <% } else { %>
-            You are not RSVPed.
+            <% if (event.isFull) { %>
+              Event is full. You can join the waitlist.
+            <% } else { %>
+              You are not RSVPed.
+            <% } %>
           <% } %>
-        <% } %>
+        </span>
+        <span
+          x-show="state === 'waitlisted' && waitlistPosition !== null"
+          class="mt-2 inline-flex items-center gap-2 rounded-md border border-violet-300 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-900"
+          data-waitlist-position="<%= typeof event.waitlistPosition === 'number' ? event.waitlistPosition : '' %>"
+          x-bind:data-waitlist-position="waitlistPosition"
+        >
+          <span class="text-violet-700">Queue position</span>
+          <span class="rounded-sm border border-violet-300 bg-white px-1.5 py-0.5 font-mono text-xs text-violet-900">
+            #<span x-text="waitlistPosition"><%= typeof event.waitlistPosition === "number" ? event.waitlistPosition : "" %></span>
+          </span>
+        </span>
       </div>
       <div class="text-xs text-slate-500">
         <strong>Attendance:</strong> <%= event.attendeeCount %> / <%= event.capacity || '∞' %>

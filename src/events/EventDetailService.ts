@@ -2,13 +2,19 @@ import { Err, Ok, type Result } from "../lib/result";
 import type { IUserRepository } from "../auth/UserRepository";
 import type { IEventRecord, IHomeContentRepository } from "../home/HomeRepository";
 import {
+  type EventAttendeeListError,
   EventAuthorizationError,
   EventNotFoundError,
   UnexpectedDependencyError,
   type EventDetailError,
   type EventRsvpToggleError,
 } from "./errors";
-import type { IActingUser, IEventDetailView } from "./EventTypes";
+import type {
+  IActingUser,
+  IEventAttendeeEntry,
+  IEventAttendeeListView,
+  IEventDetailView,
+} from "./EventTypes";
 import { canManageEvent, canViewEvent } from "./EventVisibility";
 
 type EventPermissionFlags = Pick<IEventDetailView, "canEdit" | "canCancel" | "canRsvp">;
@@ -26,6 +32,11 @@ export interface IEventDetailService {
     eventId: string,
     actor: IActingUser,
   ): Promise<Result<IEventDetailView, EventRsvpToggleError>>;
+
+  getAttendeeList(
+    eventId: string,
+    actor: IActingUser,
+  ): Promise<Result<IEventAttendeeListView, EventAttendeeListError>>;
 }
 
 function normalizeEventId(eventId: string): string | null {
@@ -59,7 +70,75 @@ function toEventDetailView(
   };
 }
 
+function sortByCreatedAtAscending(
+  left: IEventAttendeeEntry,
+  right: IEventAttendeeEntry,
+): number {
+  return left.rsvpCreatedAt.localeCompare(right.rsvpCreatedAt);
+}
+
+function canViewAttendeeList(event: IEventRecord, actor: IActingUser): boolean {
+  return actor.role === "admin" || event.organizerId === actor.userId;
+}
+
 class EventDetailService implements IEventDetailService {
+    async getAttendeeList(
+      eventId: string,
+      actor: IActingUser,
+    ): Promise<Result<IEventAttendeeListView, EventAttendeeListError>> {
+      const normalizedEventId = normalizeEventId(eventId);
+      if (!normalizedEventId) {
+        return Err(EventNotFoundError("Event not found."));
+      }
+
+      const eventResult = await this.contentRepository.findEventById(normalizedEventId);
+      if (eventResult.ok === false) {
+        return Err(UnexpectedDependencyError(eventResult.value.message));
+      }
+
+      const event = eventResult.value;
+      if (!event) {
+        return Err(EventNotFoundError("Event not found."));
+      }
+
+      if (!canViewAttendeeList(event, actor)) {
+        return Err(
+          EventAuthorizationError(
+            "Only the event organizer or an admin may view attendees.",
+          ),
+        );
+      }
+
+      const attendeeRowsResult = await this.contentRepository.listRsvpAttendeesForEvent(event.id);
+      if (attendeeRowsResult.ok === false) {
+        return Err(UnexpectedDependencyError(attendeeRowsResult.value.message));
+      }
+
+      const groupedAttendees: IEventAttendeeListView["attendees"] = {
+        going: [],
+        waitlisted: [],
+        cancelled: [],
+      };
+
+      for (const attendeeRow of attendeeRowsResult.value) {
+        groupedAttendees[attendeeRow.status].push({
+          userId: attendeeRow.userId,
+          displayName: attendeeRow.displayName,
+          status: attendeeRow.status,
+          rsvpCreatedAt: attendeeRow.createdAt,
+        });
+      }
+
+      groupedAttendees.going.sort(sortByCreatedAtAscending);
+      groupedAttendees.waitlisted.sort(sortByCreatedAtAscending);
+      groupedAttendees.cancelled.sort(sortByCreatedAtAscending);
+
+      return Ok({
+        eventId: event.id,
+        attendees: groupedAttendees,
+      });
+    }
+
     async toggleRsvp(
       eventId: string,
       actor: IActingUser,
@@ -118,7 +197,28 @@ class EventDetailService implements IEventDetailService {
         return Err(UnexpectedDependencyError(upsertResult.value.message));
       }
 
-      // 6. Return updated event detail
+      // 6. If an attending member cancelled, promote the next waitlisted member.
+      if (existingRsvp?.status === "going" && newStatus === "cancelled") {
+        const eventRsvpsResult = await this.contentRepository.listRsvpsForEvent(event.id);
+        if (eventRsvpsResult.ok === false) {
+          return Err(UnexpectedDependencyError(eventRsvpsResult.value.message));
+        }
+
+        const nextWaitlisted = eventRsvpsResult.value.find((rsvp) => rsvp.status === "waitlisted");
+        if (nextWaitlisted) {
+          const promotionResult = await this.contentRepository.upsertRsvp({
+            id: nextWaitlisted.id,
+            eventId: nextWaitlisted.eventId,
+            userId: nextWaitlisted.userId,
+            status: "going",
+          });
+          if (promotionResult.ok === false) {
+            return Err(UnexpectedDependencyError(promotionResult.value.message));
+          }
+        }
+      }
+
+      // 7. Return updated event detail
       return this.getEventDetail(event.id, actor);
     }
   constructor(
