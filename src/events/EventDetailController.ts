@@ -14,6 +14,8 @@ export interface IEventDetailController {
   toggleRsvp(req: Request, res: Response): Promise<void>;
   showAttendees(req: Request, res: Response): Promise<void>;
   showEditForm(req:Request,res:Response):Promise<void>;
+  publishEvent(req:Request,res:Response):Promise<void>;
+  cancelEvent(req:Request,res:Response):Promise<void>;
 }
 
 class EventDetailController implements IEventDetailController {
