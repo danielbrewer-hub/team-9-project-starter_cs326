@@ -120,8 +120,13 @@
         </span>
         <span
           x-show="state === 'waitlisted' && waitlistPosition !== null"
+          class="mt-2 inline-flex items-center gap-2 rounded-md border border-violet-300 bg-violet-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-900"
+          x-bind:data-waitlist-position="waitlistPosition"
         >
-          (Position <span x-text="waitlistPosition"></span>)
+          <span class="text-violet-700">Queue position</span>
+          <span class="rounded-sm border border-violet-300 bg-white px-1.5 py-0.5 font-mono text-xs text-violet-900">
+            #<span x-text="waitlistPosition"><%= typeof event.waitlistPosition === "number" ? event.waitlistPosition : "" %></span>
+          </span>
         </span>
       </div>
       <div class="text-xs text-slate-500">
